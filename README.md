@@ -1,1 +1,1 @@
-# Sage-Query
+# SmartQuery
