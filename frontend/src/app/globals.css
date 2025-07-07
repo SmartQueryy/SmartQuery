@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+/* Example: Custom global styles */
+body {
+  /* Use daisyUI classes like bg-base-100 once build is working */
+  @apply bg-gray-50 text-gray-900;
+}
