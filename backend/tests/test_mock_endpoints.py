@@ -1,232 +1,287 @@
 import uuid
 from datetime import datetime, timedelta
+from unittest.mock import Mock, patch
 
-import jwt
 import pytest
 from fastapi.testclient import TestClient
 
 from main import app
+from models.user import GoogleOAuthData, UserInDB
+from services.auth_service import AuthService
 
 client = TestClient(app)
 
-# Test JWT token for authentication
-JWT_SECRET = "mock_secret_key_for_development"
-ALGORITHM = "HS256"
+# Initialize auth service for testing
+auth_service = AuthService()
 
 
-def create_test_token(user_id: str = "user_001") -> str:
-    """Create test JWT token"""
-    to_encode = {"sub": user_id}
-    expire = datetime.utcnow() + timedelta(minutes=60)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, JWT_SECRET, algorithm=ALGORITHM)
-
-
-def test_google_login():
-    """Test Google OAuth login endpoint"""
-    response = client.post(
-        "/auth/google", json={"google_token": "mock_google_token_123"}
+@pytest.fixture
+def sample_user():
+    """Sample user for testing - uses UUID that matches our mock project ownership"""
+    test_user_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    return UserInDB(
+        id=test_user_id,
+        email="test@example.com",
+        name="Test User",
+        avatar_url="https://example.com/avatar.jpg",
+        google_id="google_123",
+        is_active=True,
+        is_verified=True,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert "access_token" in data["data"]
-    assert "user" in data["data"]
-    assert data["data"]["user"]["email"] == "john.doe@example.com"
 
 
-def test_get_current_user():
+@pytest.fixture
+def test_access_token(sample_user):
+    """Create a valid access token for testing"""
+    return auth_service.create_access_token(str(sample_user.id), sample_user.email)
+
+
+def test_google_login(test_client, sample_user):
+    """Test Google OAuth login endpoint with development mode"""
+    mock_access_token = "mock_access_token"
+    mock_refresh_token = "mock_refresh_token"
+
+    with patch(
+        "api.auth.auth_service.login_with_google",
+        return_value=(sample_user, mock_access_token, mock_refresh_token, False),
+    ):
+        response = test_client.post(
+            "/auth/google", json={"google_token": "mock_google_token_123"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "access_token" in data["data"]
+        assert "user" in data["data"]
+        assert data["data"]["user"]["email"] == "test@example.com"
+
+
+def test_get_current_user(test_client, sample_user, test_access_token):
     """Test get current user endpoint"""
-    token = create_test_token()
-    response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert data["data"]["id"] == "user_001"
+    with patch(
+        "api.auth.auth_service.get_current_user",
+        return_value=sample_user,
+    ):
+        response = test_client.get(
+            "/auth/me", headers={"Authorization": f"Bearer {test_access_token}"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["data"]["email"] == "test@example.com"
 
 
-def test_get_projects():
+def test_get_projects(test_client, test_access_token):
     """Test get projects endpoint"""
-    token = create_test_token()
-    response = client.get(
-        "/projects?page=1&limit=10", headers={"Authorization": f"Bearer {token}"}
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert "items" in data["data"]
-    assert "total" in data["data"]
-    assert len(data["data"]["items"]) >= 0
+    with patch("api.projects.verify_token"):
+        response = test_client.get(
+            "/projects?page=1&limit=10",
+            headers={"Authorization": f"Bearer {test_access_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "items" in data["data"]
+        assert "total" in data["data"]
+        assert len(data["data"]["items"]) >= 0
 
 
-def test_create_project():
+def test_create_project(test_client, test_access_token):
     """Test create project endpoint"""
-    token = create_test_token()
-    response = client.post(
-        "/projects",
-        json={"name": "Test Project", "description": "Test description"},
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert data["data"]["project"]["name"] == "Test Project"
-    assert "upload_url" in data["data"]
+    with patch("api.projects.verify_token"):
+        response = test_client.post(
+            "/projects",
+            json={"name": "Test Project", "description": "Test description"},
+            headers={"Authorization": f"Bearer {test_access_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["data"]["project"]["name"] == "Test Project"
+        assert "upload_url" in data["data"]
 
 
-def test_get_project():
+def test_get_project(test_client, test_access_token):
     """Test get single project endpoint"""
-    token = create_test_token()
-    response = client.get(
-        "/projects/project_001", headers={"Authorization": f"Bearer {token}"}
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert data["data"]["id"] == "project_001"
-    assert data["data"]["name"] == "Sales Data Analysis"
+    with patch("api.projects.verify_token"):
+        response = test_client.get(
+            "/projects/project_001",
+            headers={"Authorization": f"Bearer {test_access_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["data"]["id"] == "project_001"
+        assert data["data"]["name"] == "Sales Data Analysis"
 
 
-def test_csv_preview():
+def test_csv_preview(test_client, test_access_token):
     """Test CSV preview endpoint"""
-    token = create_test_token()
-    response = client.get(
-        "/chat/project_001/preview", headers={"Authorization": f"Bearer {token}"}
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert "columns" in data["data"]
-    assert "sample_data" in data["data"]
-    assert len(data["data"]["columns"]) > 0
+    with patch("api.chat.verify_token"):
+        response = test_client.get(
+            "/chat/project_001/preview",
+            headers={"Authorization": f"Bearer {test_access_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "columns" in data["data"]
+        assert "sample_data" in data["data"]
+        assert len(data["data"]["columns"]) > 0
 
 
-def test_send_message():
+def test_send_message(test_client, test_access_token):
     """Test send chat message endpoint"""
-    token = create_test_token()
-    response = client.post(
-        "/chat/project_001/message",
-        json={"message": "Show me total sales by product"},
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert "message" in data["data"]
-    assert "result" in data["data"]
-    assert data["data"]["result"]["result_type"] in ["table", "chart", "summary"]
+    with patch("api.chat.verify_token"):
+        response = test_client.post(
+            "/chat/project_001/message",
+            json={"message": "Show me total sales by product"},
+            headers={"Authorization": f"Bearer {test_access_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "message" in data["data"]
+        assert "result" in data["data"]
+        assert data["data"]["result"]["result_type"] in ["table", "chart", "summary"]
 
 
-def test_query_suggestions():
+def test_query_suggestions(test_client, test_access_token):
     """Test query suggestions endpoint"""
-    token = create_test_token()
-    response = client.get(
-        "/chat/project_001/suggestions", headers={"Authorization": f"Bearer {token}"}
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert len(data["data"]) > 0
-    assert all("text" in suggestion for suggestion in data["data"])
+    with patch("api.chat.verify_token"):
+        response = test_client.get(
+            "/chat/project_001/suggestions",
+            headers={"Authorization": f"Bearer {test_access_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert len(data["data"]) > 0
+        assert all("text" in suggestion for suggestion in data["data"])
 
 
-def test_unauthorized_access():
+def test_unauthorized_access(test_client):
     """Test that endpoints require authentication"""
-    response = client.get("/projects")
+    response = test_client.get("/projects")
     assert response.status_code == 403
 
 
-def test_invalid_token():
+def test_invalid_token(test_client):
     """Test invalid token handling"""
-    response = client.get(
+    response = test_client.get(
         "/projects", headers={"Authorization": "Bearer invalid_token"}
     )
     assert response.status_code == 401
 
 
-def test_logout():
+def test_logout(test_client, sample_user, test_access_token):
     """Test logout endpoint"""
-    token = create_test_token()
-    response = client.post("/auth/logout", headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert data["data"]["message"] == "Logged out successfully"
+    with patch(
+        "api.auth.auth_service.get_current_user",
+        return_value=sample_user,
+    ):
+        response = test_client.post(
+            "/auth/logout", headers={"Authorization": f"Bearer {test_access_token}"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["data"]["message"] == "Logged out successfully"
 
 
-def test_refresh_token():
+def test_refresh_token(test_client, sample_user):
     """Test refresh token endpoint"""
-    response = client.post(
-        "/auth/refresh", json={"refresh_token": "valid_refresh_token"}
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert "access_token" in data["data"]
+    mock_refresh_token = "mock_refresh_token"
+    mock_new_access_token = "new_access_token"
+    with patch(
+        "api.auth.auth_service.refresh_access_token",
+        return_value=(mock_new_access_token, sample_user),
+    ):
+        response = test_client.post(
+            "/auth/refresh", json={"refresh_token": mock_refresh_token}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "access_token" in data["data"]
 
 
-def test_project_status():
+def test_project_status(test_client, test_access_token):
     """Test project status endpoint"""
-    token = create_test_token()
-    response = client.get(
-        "/projects/project_001/status", headers={"Authorization": f"Bearer {token}"}
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert "status" in data["data"]
-    assert "progress" in data["data"]
+    with patch("api.projects.verify_token"):
+        response = test_client.get(
+            "/projects/project_001/status",
+            headers={"Authorization": f"Bearer {test_access_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "status" in data["data"]
+        assert "progress" in data["data"]
 
 
-def test_get_upload_url():
+def test_get_upload_url(test_client, test_access_token):
     """Test get upload URL endpoint"""
-    token = create_test_token()
-    response = client.get(
-        "/projects/project_001/upload-url", headers={"Authorization": f"Bearer {token}"}
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert "upload_url" in data["data"]
+    with patch("api.projects.verify_token"):
+        response = test_client.post(
+            "/projects/project_001/upload-url",
+            json={"filename": "new_data.csv", "content_type": "text/csv"},
+            headers={"Authorization": f"Bearer {test_access_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "upload_url" in data["data"]
+        assert "object_path" in data["data"]
 
 
-def test_get_messages():
+def test_get_messages(test_client, test_access_token):
     """Test get chat messages endpoint"""
-    token = create_test_token()
-    response = client.get(
-        "/chat/project_001/messages", headers={"Authorization": f"Bearer {token}"}
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert "items" in data["data"]
-    assert "total" in data["data"]
+    with patch("api.chat.verify_token"):
+        response = test_client.get(
+            "/chat/project_001/messages",
+            headers={"Authorization": f"Bearer {test_access_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "items" in data["data"]
+        assert len(data["data"]["items"]) >= 0
 
 
-def test_invalid_google_token():
+def test_invalid_google_token(test_client):
     """Test invalid Google token"""
-    response = client.post("/auth/google", json={"google_token": "invalid_token"})
-    assert response.status_code == 401
+    with patch(
+        "api.auth.auth_service.verify_google_token",
+        side_effect=ValueError("Invalid Token"),
+    ):
+        response = test_client.post(
+            "/auth/google", json={"google_token": "invalid_token"}
+        )
+        assert response.status_code == 401
 
 
-def test_project_not_found():
+def test_project_not_found(test_client, test_access_token):
     """Test project not found error"""
-    token = create_test_token()
-    response = client.get(
-        "/projects/nonexistent_project", headers={"Authorization": f"Bearer {token}"}
-    )
-    assert response.status_code == 404
+    with patch("api.projects.verify_token"):
+        response = test_client.get(
+            "/projects/nonexistent_project",
+            headers={"Authorization": f"Bearer {test_access_token}"},
+        )
+        assert response.status_code == 404
 
 
-def test_chart_query_response():
-    """Test that chart queries return appropriate response"""
-    token = create_test_token()
-    response = client.post(
-        "/chat/project_001/message",
-        json={"message": "Create a chart showing sales by category"},
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["data"]["result"]["result_type"] == "chart"
-    assert "chart_config" in data["data"]["result"]
+def test_chart_query_response(test_client, test_access_token):
+    """Test chart query response type"""
+    with patch("api.chat.verify_token"):
+        response = test_client.post(
+            "/chat/project_001/message",
+            json={"message": "show me a chart"},
+            headers={"Authorization": f"Bearer {test_access_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["data"]["result"]["result_type"] == "chart"
+        assert "chart_config" in data["data"]["result"]

@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter
 
-from services.database_service import db_service
+from services.database_service import get_db_service
 from services.redis_service import redis_service
 from services.storage_service import storage_service
 
@@ -44,7 +44,7 @@ async def health_check() -> Dict[str, Any]:
         }
 
     # Check all services in production
-    database_health = db_service.health_check()
+    database_health = get_db_service().health_check()
     redis_health = redis_service.health_check()
     storage_health = storage_service.health_check()
 

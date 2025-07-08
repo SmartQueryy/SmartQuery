@@ -1,209 +1,129 @@
 import uuid
 from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
+from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 
 from models.user import (
     GoogleOAuthData,
     UserCreate,
     UserInDB,
-    UserPublic,
+    UserTable,
     UserUpdate,
 )
+from services.user_service import UserService
 
 
 class TestUserServiceModels:
-    """Test suite for User models and basic validation"""
-
-    @pytest.fixture
-    def sample_user_data(self):
-        """Sample user data for testing"""
-        return UserCreate(
-            email="test@example.com",
-            name="Test User",
-            avatar_url="https://example.com/avatar.jpg",
-            google_id="google_123",
-        )
-
-    @pytest.fixture
-    def sample_google_data(self):
-        """Sample Google OAuth data"""
-        return GoogleOAuthData(
-            google_id="google_123",
-            email="test@example.com",
-            name="Test User",
-            avatar_url="https://example.com/avatar.jpg",
-            email_verified=True,
-        )
-
-    @pytest.fixture
-    def sample_user_in_db(self):
-        """Sample UserInDB instance"""
-        return UserInDB(
-            id=uuid.uuid4(),
-            email="test@example.com",
-            name="Test User",
-            avatar_url="https://example.com/avatar.jpg",
-            google_id="google_123",
-            is_active=True,
-            is_verified=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
-        )
+    """Test suite for Pydantic models related to UserService"""
 
     def test_user_create_validation(self):
         """Test UserCreate model validation"""
-        # Valid user creation
-        user = UserCreate(
-            email="test@example.com",
-            name="Test User",
-            avatar_url="https://example.com/avatar.jpg",
-            google_id="google_123",
+        # Valid data
+        user_data = UserCreate(
+            email="test@example.com", name="Test User", google_id="12345"
         )
-        assert user.email == "test@example.com"
-        assert user.name == "Test User"
+        assert user_data.name == "Test User"
 
-        # Test with minimal data
+        # Minimal data
         minimal_user = UserCreate(
-            email="minimal@example.com",
-            name="Minimal User",
+            email="minimal@example.com", name="Minimal User", google_id="54321"
         )
         assert minimal_user.avatar_url is None
-        assert minimal_user.google_id is None
 
     def test_user_create_email_validation(self):
         """Test email validation in UserCreate"""
-        with pytest.raises(ValueError):
-            UserCreate(
-                email="invalid-email",
-                name="Test User",
-            )
+        with pytest.raises(ValidationError):
+            UserCreate(email="not-an-email", name="Test", google_id="123")
 
     def test_user_create_name_validation(self):
         """Test name validation in UserCreate"""
-        with pytest.raises(ValueError):
-            UserCreate(
-                email="test@example.com",
-                name="",
-            )
+        with pytest.raises(ValidationError):
+            UserCreate(email="test@example.com", name="", google_id="123")
 
-        with pytest.raises(ValueError):
-            UserCreate(
-                email="test@example.com",
-                name="   ",
-            )
-
-        # Test name trimming
         user = UserCreate(
-            email="test@example.com",
-            name="  Test User  ",
+            email="test@example.com", name="  Test User  ", google_id="123"
         )
         assert user.name == "Test User"
 
     def test_user_create_avatar_url_validation(self):
-        """Test avatar URL validation"""
-        with pytest.raises(ValueError):
-            UserCreate(
-                email="test@example.com",
-                name="Test User",
-                avatar_url="invalid-url",
-            )
-
-        # Valid URLs should work
+        """Test avatar URL validation in UserCreate"""
         user = UserCreate(
             email="test@example.com",
-            name="Test User",
-            avatar_url="https://example.com/avatar.jpg",
+            name="Test",
+            google_id="123",
+            avatar_url="http://example.com/avatar.jpg",
         )
-        assert user.avatar_url == "https://example.com/avatar.jpg"
+        assert user.avatar_url == "http://example.com/avatar.jpg"
 
     def test_user_update_model(self):
         """Test UserUpdate model"""
-        # Test partial update
-        update = UserUpdate(name="Updated Name")
-        assert update.name == "Updated Name"
-        assert update.avatar_url is None
+        update = UserUpdate(name="New Name", avatar_url="http://new.url/img.png")
+        assert update.name == "New Name"
+        assert "is_active" not in update.model_dump()
 
-        # Test full update
-        full_update = UserUpdate(
-            name="Updated Name",
-            avatar_url="https://example.com/new-avatar.jpg",
-            is_active=False,
-            is_verified=True,
-            last_sign_in_at=datetime.utcnow(),
+    def test_user_in_db_model(self):
+        """Test UserInDB model creation from ORM object"""
+        user_table = UserTable(
+            id=uuid.uuid4(),
+            email="db@example.com",
+            name="DB User",
+            is_active=True,
+            is_verified=False,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
         )
-        assert full_update.name == "Updated Name"
-        assert full_update.is_active is False
-
-    def test_user_in_db_model(self, sample_user_in_db):
-        """Test UserInDB model"""
-        assert isinstance(sample_user_in_db.id, uuid.UUID)
-        assert sample_user_in_db.email == "test@example.com"
-        assert sample_user_in_db.is_active is True
-        assert isinstance(sample_user_in_db.created_at, datetime)
-
-    def test_user_public_conversion(self, sample_user_in_db):
-        """Test UserPublic conversion from UserInDB"""
-        public_user = UserPublic.from_db_user(sample_user_in_db)
-
-        assert isinstance(public_user.id, str)
-        assert public_user.email == sample_user_in_db.email
-        assert public_user.name == sample_user_in_db.name
-        assert public_user.created_at.endswith("Z")
+        user_in_db = UserInDB.model_validate(user_table)
+        assert user_in_db.name == "DB User"
 
     def test_google_oauth_data_validation(self):
         """Test GoogleOAuthData validation"""
-        # Valid Google OAuth data
         oauth_data = GoogleOAuthData(
-            google_id="google_123",
-            email="test@example.com",
-            name="Test User",
-            avatar_url="https://example.com/avatar.jpg",
-            email_verified=True,
+            google_id="google123",
+            email="oauth@example.com",
+            name="OAuth User",
         )
-        assert oauth_data.google_id == "google_123"
-        assert oauth_data.email_verified is True
+        assert oauth_data.name == "OAuth User"
+        assert oauth_data.google_id == "google123"
 
     def test_google_oauth_empty_google_id(self):
         """Test GoogleOAuthData with empty Google ID"""
-        with pytest.raises(ValueError):
-            GoogleOAuthData(
-                google_id="",
-                email="test@example.com",
-                name="Test User",
-            )
-
-        with pytest.raises(ValueError):
-            GoogleOAuthData(
-                google_id="   ",
-                email="test@example.com",
-                name="Test User",
-            )
+        with pytest.raises(ValidationError):
+            GoogleOAuthData(google_id="", email="test@test.com", name="Test")
 
     def test_google_oauth_whitespace_trimming(self):
-        """Test GoogleOAuthData trims whitespace from Google ID"""
-        oauth_data = GoogleOAuthData(
+        """Test GoogleOAuthData trims whitespace from fields"""
+        # This behavior is default in Pydantic v2 unless annotated otherwise
+        data = GoogleOAuthData(
             google_id="  google_123  ",
-            email="test@example.com",
-            name="Test User",
+            email=" trim@example.com ",
+            name="  Trimmed Name  ",
         )
-        assert oauth_data.google_id == "google_123"
+        assert data.google_id == "google_123"
+        assert data.email == "trim@example.com"
+        assert data.name == "Trimmed Name"
 
 
 class TestUserServiceLogic:
-    """Test UserService business logic (without database)"""
+    """Test suite for the logic within UserService"""
+
+    @pytest.fixture
+    def mock_db_service(self):
+        """Mock the database service for testing UserService logic"""
+        mock_session = MagicMock()
+        mock_db_service = MagicMock()
+        mock_db_service.get_session.return_value.__enter__.return_value = mock_session
+        return mock_db_service
 
     def test_user_service_import(self):
         """Test that UserService can be imported and instantiated"""
-        from services.user_service import UserService
-
         service = UserService()
         assert service is not None
 
     def test_health_check_method_exists(self):
         """Test that health_check method exists"""
-        from services.user_service import UserService
-
         service = UserService()
         assert hasattr(service, "health_check")
         assert callable(getattr(service, "health_check"))

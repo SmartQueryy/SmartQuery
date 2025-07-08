@@ -122,7 +122,7 @@ def test_service_imports():
     print("📦 Testing Service Imports...")
     
     try:
-        from services.database_service import db_service
+        from services.database_service import get_db_service
         print("✅ Database service imports successfully")
     except Exception as e:
         print(f"❌ Database service import failed: {e}")

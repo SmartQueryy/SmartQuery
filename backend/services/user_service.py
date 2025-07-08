@@ -10,18 +10,17 @@ from models.user import (
     GoogleOAuthData,
     UserCreate,
     UserInDB,
-    UserPublic,
     UserTable,
     UserUpdate,
 )
-from services.database_service import db_service
+from services.database_service import get_db_service
 
 
 class UserService:
     """Service for user database operations"""
 
     def __init__(self):
-        self.db_service = db_service
+        self.db_service = get_db_service()
 
     def create_user(self, user_data: UserCreate) -> UserInDB:
         """Create a new user in the database"""
@@ -223,11 +222,6 @@ class UserService:
         updated_user = self.update_last_sign_in(new_user.id)
         return updated_user, True
 
-    def get_user_public(self, user_id: uuid.UUID) -> Optional[UserPublic]:
-        """Get public user data for API responses"""
-        user = self.get_user_by_id(user_id)
-        return UserPublic.from_db_user(user) if user else None
-
     def health_check(self) -> dict:
         """Check if user service and database connection is healthy"""
         try:
@@ -247,5 +241,12 @@ class UserService:
             }
 
 
-# Global instance
-user_service = UserService()
+_user_service_instance = None
+
+
+def get_user_service():
+    """Returns a singleton instance of the UserService."""
+    global _user_service_instance
+    if _user_service_instance is None:
+        _user_service_instance = UserService()
+    return _user_service_instance
