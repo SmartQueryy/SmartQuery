@@ -1,1 +1,1 @@
-# API package for SmartQuery backend 
+# API package for SmartQuery backend

@@ -1,1 +1,1 @@
-# Tasks package for SmartQuery backend Celery tasks 
+# Tasks package for SmartQuery backend Celery tasks

@@ -12,21 +12,21 @@ router = APIRouter(prefix="/health", tags=["health"])
 @router.get("/")
 async def health_check() -> Dict[str, Any]:
     """Detailed health check endpoint with infrastructure service checks"""
-    
+
     # Check all services
     database_health = db_service.health_check()
     redis_health = redis_service.health_check()
     storage_health = storage_service.health_check()
-    
+
     # Determine overall status
     all_healthy = (
-        database_health.get("status") == "healthy" and
-        redis_health.get("status") == "healthy" and
-        storage_health.get("status") == "healthy"
+        database_health.get("status") == "healthy"
+        and redis_health.get("status") == "healthy"
+        and storage_health.get("status") == "healthy"
     )
-    
+
     overall_status = "healthy" if all_healthy else "partial"
-    
+
     return {
         "success": True,
         "data": {
@@ -44,6 +44,6 @@ async def health_check() -> Dict[str, Any]:
                 "database": database_health,
                 "redis": redis_health,
                 "storage": storage_health,
-            }
+            },
         },
-    } 
+    }

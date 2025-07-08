@@ -1,1 +1,1 @@
-# Utils package for SmartQuery backend 
+# Utils package for SmartQuery backend

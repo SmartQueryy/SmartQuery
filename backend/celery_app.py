@@ -10,7 +10,7 @@ celery_app = Celery(
     "smartquery",
     broker=os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1"),
     backend=os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/1"),
-    include=["tasks.file_processing"]
+    include=["tasks.file_processing"],
 )
 
 # Celery configuration
@@ -34,4 +34,4 @@ celery_app.conf.task_routes = {
 }
 
 if __name__ == "__main__":
-    celery_app.start() 
+    celery_app.start()

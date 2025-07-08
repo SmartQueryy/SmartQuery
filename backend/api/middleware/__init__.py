@@ -1,1 +1,1 @@
-# Middleware package for SmartQuery backend 
+# Middleware package for SmartQuery backend

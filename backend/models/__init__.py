@@ -1,1 +1,1 @@
-# Models package for SmartQuery backend 
+# Models package for SmartQuery backend
