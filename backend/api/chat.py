@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from api.auth import verify_token
+from middleware.auth_middleware import verify_token
 from api.projects import MOCK_PROJECTS
 from models.response_schemas import (
     ApiResponse,

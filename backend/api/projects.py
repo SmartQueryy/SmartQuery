@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from api.auth import verify_token
+from middleware.auth_middleware import verify_token
 from models.response_schemas import (
     ApiResponse,
     ColumnMetadata,
