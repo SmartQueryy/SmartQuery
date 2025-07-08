@@ -29,12 +29,12 @@ class UserTable(Base):
     last_sign_in_at = Column(DateTime, nullable=True)
 
     # Relationships
-    projects = relationship(
-        "ProjectTable", back_populates="user", cascade="all, delete"
-    )
-    chat_messages = relationship(
-        "ChatMessageTable", back_populates="user", cascade="all, delete"
-    )
+    # projects = relationship(
+    #     "ProjectTable", back_populates="user", cascade="all, delete"
+    # )
+    # chat_messages = relationship(
+    #     "ChatMessageTable", back_populates="user", cascade="all, delete"
+    # )
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, name={self.name})>"
