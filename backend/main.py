@@ -28,16 +28,33 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    """Health check endpoint"""
-    return {"message": "SmartQuery API is running", "status": "healthy"}
+    """Root endpoint"""
+    return {
+        "success": True,
+        "data": {
+            "message": "SmartQuery API is running",
+            "status": "healthy"
+        }
+    }
 
 @app.get("/health")
 async def health_check():
     """Detailed health check endpoint"""
+    from datetime import datetime
     return {
-        "status": "healthy",
-        "service": "SmartQuery API",
-        "version": "1.0.0"
+        "success": True,
+        "data": {
+            "status": "healthy",
+            "service": "SmartQuery API",
+            "version": "1.0.0",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "checks": {
+                "database": False,  # Will be implemented in Task B2
+                "redis": False,     # Will be implemented in Task B2
+                "storage": False,   # Will be implemented in Task B2
+                "llm_service": False  # Will be implemented in Task B15
+            }
+        }
     }
 
 if __name__ == "__main__":
