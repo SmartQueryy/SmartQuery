@@ -1,21 +1,22 @@
-from datetime import datetime
-from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import Dict, Any, List
-import uuid
 import random
+import uuid
+from datetime import datetime
+from typing import Any, Dict, List
 
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from api.auth import verify_token
+from api.projects import MOCK_PROJECTS
 from models.response_schemas import (
     ApiResponse,
     ChatMessage,
+    CSVPreview,
+    PaginatedResponse,
+    QueryResult,
+    QuerySuggestion,
     SendMessageRequest,
     SendMessageResponse,
-    QueryResult,
-    PaginatedResponse,
-    CSVPreview,
-    QuerySuggestion,
 )
-from api.auth import verify_token
-from api.projects import MOCK_PROJECTS
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 

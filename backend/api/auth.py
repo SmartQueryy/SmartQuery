@@ -1,17 +1,18 @@
-from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import Dict, Any
-import uuid
-import jwt
 import os
+import uuid
+from datetime import datetime, timedelta
+from typing import Any, Dict
+
+import jwt
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from models.response_schemas import (
     ApiResponse,
-    User,
-    LoginRequest,
     AuthResponse,
+    LoginRequest,
     RefreshTokenRequest,
+    User,
 )
 
 router = APIRouter(prefix="/auth", tags=["authentication"])

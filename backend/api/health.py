@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Any, Dict
+
 from fastapi import APIRouter
-from typing import Dict, Any
 
 from services.database_service import db_service
 from services.redis_service import redis_service
