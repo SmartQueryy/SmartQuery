@@ -79,6 +79,50 @@ class DatabaseService:
             self.connect()
         return self.SessionLocal()
 
+    def create_tables(self):
+        """Create database tables using SQLAlchemy models"""
+        try:
+            from models.user import Base
+
+            if not self.engine:
+                self.connect()
+
+            # Create all tables
+            Base.metadata.create_all(bind=self.engine)
+            logger.info("Database tables created successfully")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to create tables: {str(e)}")
+            return False
+
+    def run_migration(self, migration_file: str) -> bool:
+        """Run a SQL migration file"""
+        try:
+            if not self.engine:
+                self.connect()
+
+            migration_path = f"database/migrations/{migration_file}"
+
+            if not os.path.exists(migration_path):
+                logger.error(f"Migration file not found: {migration_path}")
+                return False
+
+            with open(migration_path, "r") as f:
+                migration_sql = f.read()
+
+            with self.engine.connect() as conn:
+                # Execute migration
+                conn.execute(text(migration_sql))
+                conn.commit()
+
+            logger.info(f"Migration {migration_file} executed successfully")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to run migration {migration_file}: {str(e)}")
+            return False
+
 
 # Global database service instance
 db_service = DatabaseService()
