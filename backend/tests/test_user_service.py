@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
@@ -13,7 +14,6 @@ from models.user import (
     UserUpdate,
 )
 from services.user_service import UserService
-from unittest.mock import MagicMock, patch
 
 
 class TestUserServiceModels:

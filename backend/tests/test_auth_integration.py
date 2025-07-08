@@ -8,12 +8,12 @@ import uuid
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
 
+import jwt
 import pytest
 from fastapi.testclient import TestClient
-import jwt
 
 from main import app
-from models.user import UserInDB, GoogleOAuthData
+from models.user import GoogleOAuthData, UserInDB
 from services.auth_service import AuthService
 
 

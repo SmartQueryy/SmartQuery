@@ -1,11 +1,11 @@
 import uuid
 from datetime import datetime
-from typing import Optional, List
+from typing import List, Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from sqlalchemy import Boolean, Column, DateTime, String, Text, func, TypeDecorator
+from sqlalchemy import Boolean, Column, DateTime, String, Text, TypeDecorator, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship, declarative_base
+from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 from models.base import Base
 
