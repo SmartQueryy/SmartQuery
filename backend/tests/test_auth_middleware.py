@@ -1,22 +1,22 @@
 import uuid
 from datetime import datetime
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
 
+import jwt
 import pytest
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
-import jwt
 
 from middleware.auth_middleware import (
     AuthMiddleware,
+    RateLimitMiddleware,
+    extract_user_context,
     get_current_user,
     get_current_user_optional,
-    verify_token,
-    require_auth,
     require_active_user,
+    require_auth,
     require_verified_user,
-    extract_user_context,
-    RateLimitMiddleware,
+    verify_token,
 )
 from models.user import UserInDB
 from services.auth_service import AuthService

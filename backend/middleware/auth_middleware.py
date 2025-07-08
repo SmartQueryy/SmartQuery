@@ -4,15 +4,15 @@ Provides JWT token validation and user context injection
 """
 
 import logging
-from typing import Optional, Callable, Any
 from functools import wraps
+from typing import Any, Callable, Optional
 
-from fastapi import HTTPException, Request, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
+from fastapi import Depends, HTTPException, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from services.auth_service import AuthService
 from models.user import UserInDB
+from services.auth_service import AuthService
 
 # Configure logging
 logger = logging.getLogger(__name__)

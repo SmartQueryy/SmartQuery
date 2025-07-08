@@ -1,10 +1,10 @@
+import logging
 import uuid
 from typing import Optional
-import logging
 
-from fastapi import APIRouter, HTTPException, Depends
-from fastapi.security import HTTPBearer
 import jwt
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import HTTPBearer
 
 from models.response_schemas import ApiResponse, AuthResponse, LoginRequest, User
 from models.user import UserPublic

@@ -6,13 +6,13 @@ Tests the complete auth flow including endpoints, middleware, and services
 import json
 import uuid
 from datetime import datetime
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
 from main import app
-from models.user import UserInDB, GoogleOAuthData
+from models.user import GoogleOAuthData, UserInDB
 from services.auth_service import AuthService
 
 # Test client
@@ -64,8 +64,9 @@ class TestAuthIntegration:
     @pytest.fixture
     def expired_token(self, sample_user):
         """Create an expired token for testing"""
-        import jwt
         from datetime import timedelta
+
+        import jwt
 
         # Create token that expired 1 hour ago
         past_time = datetime.utcnow() - timedelta(hours=1)

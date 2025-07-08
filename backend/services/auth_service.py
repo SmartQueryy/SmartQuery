@@ -1,13 +1,13 @@
+import logging
 import os
 import uuid
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple
-import logging
 
 import jwt
+from google.auth.exceptions import GoogleAuthError
 from google.auth.transport import requests
 from google.oauth2 import id_token
-from google.auth.exceptions import GoogleAuthError
 from pydantic import BaseModel
 
 from models.user import GoogleOAuthData, UserInDB
