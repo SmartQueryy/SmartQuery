@@ -6,36 +6,46 @@ from pydantic import BaseModel
 
 T = TypeVar("T")
 
+
 class ApiResponse(BaseModel, Generic[T]):
     """Standard API response format matching the frontend contract"""
+
     success: bool
     data: Optional[T] = None
     error: Optional[str] = None
     message: Optional[str] = None
 
+
 class HealthStatus(BaseModel):
     """Health check status model"""
+
     status: str
     service: str
     version: str
     timestamp: str
     checks: dict
 
+
 class HealthChecks(BaseModel):
     """Individual health checks"""
+
     database: bool
     redis: bool
     storage: bool
     llm_service: bool
 
+
 class ValidationError(BaseModel):
     """Validation error details"""
+
     field: str
     message: str
     code: str
 
+
 class ApiError(BaseModel):
     """API error response format"""
+
     error: str
     message: str
     code: int
@@ -50,6 +60,7 @@ class ApiError(BaseModel):
 
 class User(BaseModel):
     """User model"""
+
     id: str
     email: str
     name: str
@@ -60,11 +71,13 @@ class User(BaseModel):
 
 class LoginRequest(BaseModel):
     """Google OAuth login request"""
+
     google_token: str
 
 
 class AuthResponse(BaseModel):
     """Authentication response"""
+
     user: User
     access_token: str
     refresh_token: str
@@ -73,6 +86,7 @@ class AuthResponse(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     """Refresh token request"""
+
     refresh_token: str
 
 
@@ -83,6 +97,7 @@ class RefreshTokenRequest(BaseModel):
 
 class ProjectStatus(str, Enum):
     """Project status enum"""
+
     UPLOADING = "uploading"
     PROCESSING = "processing"
     READY = "ready"
@@ -91,6 +106,7 @@ class ProjectStatus(str, Enum):
 
 class ColumnMetadata(BaseModel):
     """Column metadata model"""
+
     name: str
     type: str
     nullable: bool
@@ -100,6 +116,7 @@ class ColumnMetadata(BaseModel):
 
 class Project(BaseModel):
     """Project model"""
+
     id: str
     user_id: str
     name: str
@@ -116,12 +133,14 @@ class Project(BaseModel):
 
 class CreateProjectRequest(BaseModel):
     """Create project request"""
+
     name: str
     description: Optional[str] = None
 
 
 class CreateProjectResponse(BaseModel):
     """Create project response"""
+
     project: Project
     upload_url: str
     upload_fields: Dict[str, str]
@@ -129,12 +148,14 @@ class CreateProjectResponse(BaseModel):
 
 class PaginationParams(BaseModel):
     """Pagination parameters"""
+
     page: int = 1
     limit: int = 20
 
 
 class PaginatedResponse(BaseModel, Generic[T]):
     """Paginated response"""
+
     items: List[T]
     total: int
     page: int
@@ -144,6 +165,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
 
 class UploadStatusResponse(BaseModel):
     """Upload status response"""
+
     project_id: str
     status: str
     progress: int
@@ -157,6 +179,7 @@ class UploadStatusResponse(BaseModel):
 
 class ChatMessage(BaseModel):
     """Chat message model"""
+
     id: str
     project_id: str
     user_id: str
@@ -168,12 +191,14 @@ class ChatMessage(BaseModel):
 
 class SendMessageRequest(BaseModel):
     """Send message request"""
+
     message: str
     context: Optional[List[str]] = None
 
 
 class QueryResult(BaseModel):
     """Query result model"""
+
     id: str
     query: str
     sql_query: str
@@ -186,12 +211,14 @@ class QueryResult(BaseModel):
 
 class SendMessageResponse(BaseModel):
     """Send message response"""
+
     message: ChatMessage
     result: QueryResult
 
 
 class CSVPreview(BaseModel):
     """CSV preview model"""
+
     columns: List[str]
     sample_data: List[List[Any]]
     total_rows: int
@@ -200,6 +227,7 @@ class CSVPreview(BaseModel):
 
 class QuerySuggestion(BaseModel):
     """Query suggestion model"""
+
     id: str
     text: str
     category: str
