@@ -18,17 +18,23 @@ auth_service = AuthService()
 @pytest.fixture(autouse=True)
 def mock_database_operations():
     """Automatically mock database operations for all tests"""
-    with patch('api.auth.auth_service.user_service.get_user_by_email') as mock_get_by_email, \
-         patch('api.auth.auth_service.user_service.get_user_by_id') as mock_get_by_id, \
-         patch('api.auth.auth_service.user_service.create_or_update_from_google_oauth') as mock_oauth, \
-         patch('api.auth.auth_service.user_service.update_last_sign_in') as mock_sign_in, \
-         patch('api.projects.MOCK_PROJECTS') as mock_projects, \
-         patch('api.chat.MOCK_CHAT_MESSAGES') as mock_chat:
-        
+    with (
+        patch(
+            "api.auth.auth_service.user_service.get_user_by_email"
+        ) as mock_get_by_email,
+        patch("api.auth.auth_service.user_service.get_user_by_id") as mock_get_by_id,
+        patch(
+            "api.auth.auth_service.user_service.create_or_update_from_google_oauth"
+        ) as mock_oauth,
+        patch("api.auth.auth_service.user_service.update_last_sign_in") as mock_sign_in,
+        patch("api.projects.MOCK_PROJECTS") as mock_projects,
+        patch("api.chat.MOCK_CHAT_MESSAGES") as mock_chat,
+    ):
+
         # Default mock user - use UUID that we'll also patch in MOCK_PROJECTS
         test_user_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
         test_user_id_str = str(test_user_id)
-        
+
         default_user = UserInDB(
             id=test_user_id,
             email="test@example.com",
@@ -40,7 +46,7 @@ def mock_database_operations():
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )
-        
+
         # Mock projects data with our test user ID
         mock_projects_data = {
             "project_001": {
@@ -75,22 +81,22 @@ def mock_database_operations():
         }
         mock_projects.clear()
         mock_projects.update(mock_projects_data)
-        
+
         # Initialize empty chat messages
         mock_chat.clear()
-        
+
         mock_get_by_email.return_value = default_user
         mock_get_by_id.return_value = default_user
         mock_oauth.return_value = (default_user, True)
         mock_sign_in.return_value = default_user
-        
+
         yield {
-            'get_by_email': mock_get_by_email,
-            'get_by_id': mock_get_by_id,
-            'oauth': mock_oauth,
-            'sign_in': mock_sign_in,
-            'default_user': default_user,
-            'test_user_id': test_user_id_str
+            "get_by_email": mock_get_by_email,
+            "get_by_id": mock_get_by_id,
+            "oauth": mock_oauth,
+            "sign_in": mock_sign_in,
+            "default_user": default_user,
+            "test_user_id": test_user_id_str,
         }
 
 
@@ -119,8 +125,8 @@ def test_access_token(sample_user):
 
 def test_google_login():
     """Test Google OAuth login endpoint with development mode"""
-    with patch.dict('os.environ', {'ENVIRONMENT': 'development'}):
-        with patch('api.auth.auth_service.google_client_id', 'mock_client_id'):
+    with patch.dict("os.environ", {"ENVIRONMENT": "development"}):
+        with patch("api.auth.auth_service.google_client_id", "mock_client_id"):
             response = client.post(
                 "/auth/google", json={"google_token": "mock_google_token_123"}
             )
@@ -134,7 +140,9 @@ def test_google_login():
 
 def test_get_current_user(sample_user, test_access_token):
     """Test get current user endpoint"""
-    response = client.get("/auth/me", headers={"Authorization": f"Bearer {test_access_token}"})
+    response = client.get(
+        "/auth/me", headers={"Authorization": f"Bearer {test_access_token}"}
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
@@ -144,7 +152,8 @@ def test_get_current_user(sample_user, test_access_token):
 def test_get_projects(sample_user, test_access_token):
     """Test get projects endpoint"""
     response = client.get(
-        "/projects?page=1&limit=10", headers={"Authorization": f"Bearer {test_access_token}"}
+        "/projects?page=1&limit=10",
+        headers={"Authorization": f"Bearer {test_access_token}"},
     )
     assert response.status_code == 200
     data = response.json()
@@ -171,7 +180,8 @@ def test_create_project(sample_user, test_access_token):
 def test_get_project(sample_user, test_access_token):
     """Test get single project endpoint"""
     response = client.get(
-        "/projects/project_001", headers={"Authorization": f"Bearer {test_access_token}"}
+        "/projects/project_001",
+        headers={"Authorization": f"Bearer {test_access_token}"},
     )
     assert response.status_code == 200
     data = response.json()
@@ -183,7 +193,8 @@ def test_get_project(sample_user, test_access_token):
 def test_csv_preview(sample_user, test_access_token):
     """Test CSV preview endpoint"""
     response = client.get(
-        "/chat/project_001/preview", headers={"Authorization": f"Bearer {test_access_token}"}
+        "/chat/project_001/preview",
+        headers={"Authorization": f"Bearer {test_access_token}"},
     )
     assert response.status_code == 200
     data = response.json()
@@ -211,7 +222,8 @@ def test_send_message(sample_user, test_access_token):
 def test_query_suggestions(sample_user, test_access_token):
     """Test query suggestions endpoint"""
     response = client.get(
-        "/chat/project_001/suggestions", headers={"Authorization": f"Bearer {test_access_token}"}
+        "/chat/project_001/suggestions",
+        headers={"Authorization": f"Bearer {test_access_token}"},
     )
     assert response.status_code == 200
     data = response.json()
@@ -236,7 +248,9 @@ def test_invalid_token():
 
 def test_logout(sample_user, test_access_token):
     """Test logout endpoint"""
-    response = client.post("/auth/logout", headers={"Authorization": f"Bearer {test_access_token}"})
+    response = client.post(
+        "/auth/logout", headers={"Authorization": f"Bearer {test_access_token}"}
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
@@ -245,10 +259,10 @@ def test_logout(sample_user, test_access_token):
 
 def test_refresh_token(sample_user):
     """Test refresh token endpoint"""
-    test_refresh_token = auth_service.create_refresh_token(str(sample_user.id), sample_user.email)
-    response = client.post(
-        "/auth/refresh", json={"refresh_token": test_refresh_token}
+    test_refresh_token = auth_service.create_refresh_token(
+        str(sample_user.id), sample_user.email
     )
+    response = client.post("/auth/refresh", json={"refresh_token": test_refresh_token})
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
@@ -258,7 +272,8 @@ def test_refresh_token(sample_user):
 def test_project_status(sample_user, test_access_token):
     """Test project status endpoint"""
     response = client.get(
-        "/projects/project_001/status", headers={"Authorization": f"Bearer {test_access_token}"}
+        "/projects/project_001/status",
+        headers={"Authorization": f"Bearer {test_access_token}"},
     )
     assert response.status_code == 200
     data = response.json()
@@ -270,7 +285,8 @@ def test_project_status(sample_user, test_access_token):
 def test_get_upload_url(sample_user, test_access_token):
     """Test get upload URL endpoint"""
     response = client.get(
-        "/projects/project_001/upload-url", headers={"Authorization": f"Bearer {test_access_token}"}
+        "/projects/project_001/upload-url",
+        headers={"Authorization": f"Bearer {test_access_token}"},
     )
     assert response.status_code == 200
     data = response.json()
@@ -281,7 +297,8 @@ def test_get_upload_url(sample_user, test_access_token):
 def test_get_messages(sample_user, test_access_token):
     """Test get chat messages endpoint"""
     response = client.get(
-        "/chat/project_001/messages", headers={"Authorization": f"Bearer {test_access_token}"}
+        "/chat/project_001/messages",
+        headers={"Authorization": f"Bearer {test_access_token}"},
     )
     assert response.status_code == 200
     data = response.json()
@@ -299,7 +316,8 @@ def test_invalid_google_token():
 def test_project_not_found(sample_user, test_access_token):
     """Test project not found error"""
     response = client.get(
-        "/projects/nonexistent_project", headers={"Authorization": f"Bearer {test_access_token}"}
+        "/projects/nonexistent_project",
+        headers={"Authorization": f"Bearer {test_access_token}"},
     )
     assert response.status_code == 404
 
@@ -314,4 +332,4 @@ def test_chart_query_response(sample_user, test_access_token):
     assert response.status_code == 200
     data = response.json()
     assert data["data"]["result"]["result_type"] == "chart"
-    assert "chart_config" in data["data"]["result"] 
+    assert "chart_config" in data["data"]["result"]

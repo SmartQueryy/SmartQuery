@@ -28,19 +28,19 @@ async def login_with_google(request: LoginRequest) -> ApiResponse[AuthResponse]:
     """Google OAuth login with enhanced error handling"""
     try:
         logger.info("Received Google OAuth login request")
-        
+
         # Validate request
         if not request.google_token or not request.google_token.strip():
             logger.warning("Empty Google token received")
             raise HTTPException(status_code=400, detail="Google token is required")
-        
+
         user, access_token, refresh_token, is_new_user = auth_service.login_with_google(
             request.google_token.strip()
         )
 
         # Convert UserInDB to UserPublic for API response
         public_user = UserPublic.from_db_user(user)
-        
+
         # Convert to response format expected by frontend
         user_response = User(
             id=public_user.id,
@@ -58,11 +58,17 @@ async def login_with_google(request: LoginRequest) -> ApiResponse[AuthResponse]:
             expires_in=auth_service.access_token_expire_minutes * 60,
         )
 
-        logger.info(f"Google OAuth login successful for user: {user.email}, is_new_user: {is_new_user}")
+        logger.info(
+            f"Google OAuth login successful for user: {user.email}, is_new_user: {is_new_user}"
+        )
         return ApiResponse(
-            success=True, 
+            success=True,
             data=auth_response,
-            message="Login successful" if not is_new_user else "Account created and login successful"
+            message=(
+                "Login successful"
+                if not is_new_user
+                else "Account created and login successful"
+            ),
         )
 
     except ValueError as e:
@@ -74,14 +80,16 @@ async def login_with_google(request: LoginRequest) -> ApiResponse[AuthResponse]:
 
 
 @router.get("/me")
-async def get_current_user(token: str = Depends(get_current_user_token)) -> ApiResponse[User]:
+async def get_current_user(
+    token: str = Depends(get_current_user_token),
+) -> ApiResponse[User]:
     """Get current user information with enhanced error handling"""
     try:
         logger.info("Received current user request")
-        
+
         user = auth_service.get_current_user(token)
         public_user = UserPublic.from_db_user(user)
-        
+
         user_response = User(
             id=public_user.id,
             email=public_user.email,
@@ -96,10 +104,14 @@ async def get_current_user(token: str = Depends(get_current_user_token)) -> ApiR
 
     except jwt.InvalidTokenError as e:
         logger.warning(f"Invalid token in current user request: {str(e)}")
-        raise HTTPException(status_code=401, detail=f"Invalid or expired token: {str(e)}")
+        raise HTTPException(
+            status_code=401, detail=f"Invalid or expired token: {str(e)}"
+        )
     except Exception as e:
         logger.error(f"Current user request failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get user information: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get user information: {str(e)}"
+        )
 
 
 @router.post("/logout")
@@ -107,19 +119,19 @@ async def logout(token: str = Depends(get_current_user_token)) -> ApiResponse[di
     """Logout current user with enhanced logging"""
     try:
         logger.info("Received logout request")
-        
+
         # Verify token and get user for logging
         user = auth_service.get_current_user(token)
-        
+
         # Revoke tokens (placeholder implementation)
         success = auth_service.revoke_user_tokens(str(user.id))
-        
+
         if success:
             logger.info(f"Logout successful for user: {user.email}")
             return ApiResponse(
-                success=True, 
+                success=True,
                 data={"message": "Logged out successfully"},
-                message="You have been logged out"
+                message="You have been logged out",
             )
         else:
             logger.error(f"Token revocation failed for user: {user.email}")
@@ -127,7 +139,9 @@ async def logout(token: str = Depends(get_current_user_token)) -> ApiResponse[di
 
     except jwt.InvalidTokenError as e:
         logger.warning(f"Invalid token in logout request: {str(e)}")
-        raise HTTPException(status_code=401, detail=f"Invalid or expired token: {str(e)}")
+        raise HTTPException(
+            status_code=401, detail=f"Invalid or expired token: {str(e)}"
+        )
     except Exception as e:
         logger.error(f"Logout failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Logout failed: {str(e)}")
@@ -138,15 +152,17 @@ async def refresh_token(request: dict) -> ApiResponse[AuthResponse]:
     """Refresh access token with enhanced validation"""
     try:
         logger.info("Received token refresh request")
-        
+
         # Validate request
         refresh_token = request.get("refresh_token")
         if not refresh_token or not refresh_token.strip():
             logger.warning("Empty refresh token received")
             raise HTTPException(status_code=400, detail="Refresh token is required")
-        
-        new_access_token, user = auth_service.refresh_access_token(refresh_token.strip())
-        
+
+        new_access_token, user = auth_service.refresh_access_token(
+            refresh_token.strip()
+        )
+
         # Convert to response format
         public_user = UserPublic.from_db_user(user)
         user_response = User(
@@ -167,14 +183,14 @@ async def refresh_token(request: dict) -> ApiResponse[AuthResponse]:
 
         logger.info(f"Token refresh successful for user: {user.email}")
         return ApiResponse(
-            success=True, 
-            data=auth_response,
-            message="Token refreshed successfully"
+            success=True, data=auth_response, message="Token refreshed successfully"
         )
 
     except jwt.InvalidTokenError as e:
         logger.warning(f"Invalid refresh token: {str(e)}")
-        raise HTTPException(status_code=401, detail=f"Invalid or expired refresh token: {str(e)}")
+        raise HTTPException(
+            status_code=401, detail=f"Invalid or expired refresh token: {str(e)}"
+        )
     except Exception as e:
         logger.error(f"Token refresh failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Token refresh failed: {str(e)}")
@@ -185,22 +201,22 @@ async def auth_health_check() -> ApiResponse[dict]:
     """Enhanced authentication service health check"""
     try:
         logger.info("Received auth health check request")
-        
+
         health_data = auth_service.health_check()
-        
+
         # Determine HTTP status based on health
         if health_data.get("status") == "healthy":
             logger.info("Auth health check passed")
             return ApiResponse(
                 success=True,
                 data=health_data,
-                message="Authentication service is healthy"
+                message="Authentication service is healthy",
             )
         else:
             logger.warning(f"Auth health check failed: {health_data}")
             raise HTTPException(
-                status_code=503, 
-                detail=f"Authentication service is unhealthy: {health_data.get('error', 'Unknown error')}"
+                status_code=503,
+                detail=f"Authentication service is unhealthy: {health_data.get('error', 'Unknown error')}",
             )
 
     except Exception as e:
