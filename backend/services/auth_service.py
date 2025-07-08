@@ -11,9 +11,10 @@ from google.oauth2 import id_token
 from pydantic import BaseModel
 
 from models.user import GoogleOAuthData, UserInDB
-from services.user_service import UserService
+from services.user_service import get_user_service
 
-# Configure logging
+# Initialize user service
+user_service = get_user_service()
 logger = logging.getLogger(__name__)
 
 
@@ -29,7 +30,7 @@ class AuthService:
     """Authentication service for JWT and Google OAuth"""
 
     def __init__(self):
-        self.user_service = UserService()
+        self.user_service = user_service
         self.jwt_secret = os.getenv(
             "JWT_SECRET", "development_secret_key_change_in_production"
         )
@@ -198,6 +199,7 @@ class AuthService:
                 logger.warning(
                     f"Unverified email from Google OAuth: {idinfo.get('email')}"
                 )
+                raise ValueError("Email not verified by Google")
 
             # Extract and validate user information
             google_data = GoogleOAuthData(

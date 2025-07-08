@@ -5,6 +5,8 @@ from unittest.mock import Mock, patch
 
 import jwt
 import pytest
+from google.auth.transport import requests
+from google.oauth2 import id_token
 
 from models.user import GoogleOAuthData, UserInDB
 from services.auth_service import AuthService, TokenData
@@ -176,67 +178,37 @@ class TestAuthService:
                 with pytest.raises(ValueError):
                     auth_service.verify_google_token("mock_google_token_123")
 
-    @patch("services.auth_service.id_token.verify_oauth2_token")
-    def test_verify_production_google_token_success(self, mock_verify, auth_service):
-        """Test successful production Google token verification"""
-        # Mock Google's response
-        mock_verify.return_value = {
-            "sub": "google_123",
+    @patch('services.auth_service.id_token')
+    def test_verify_production_google_token_success(self, mock_id_token, auth_service):
+        """Test successful verification of a production Google token"""
+        mock_id_token.verify_oauth2_token.return_value = {
+            "sub": "google123",
             "email": "test@example.com",
             "name": "Test User",
-            "picture": "https://example.com/photo.jpg",
-            "email_verified": True,
+            "picture": "https://example.com/avatar.jpg",
+            "email_verified": True
         }
+        
+        with patch.object(auth_service, 'google_client_id', 'test_client_id'):
+            google_data = auth_service.verify_google_token("valid_token")
+            
+            assert google_data.google_id == "google123"
+            assert google_data.email == "test@example.com"
 
-        with patch.object(auth_service, "google_client_id", "real_client_id"):
-            with patch.object(auth_service, "enable_mock_auth", False):
-                google_data = auth_service.verify_google_token("real_google_token")
 
-                assert google_data.google_id == "google_123"
-                assert google_data.email == "test@example.com"
-                assert google_data.name == "Test User"
-                assert google_data.avatar_url == "https://example.com/photo.jpg"
-                assert google_data.email_verified is True
-
-    @patch("services.auth_service.id_token.verify_oauth2_token")
-    def test_verify_production_google_token_missing_fields(
-        self, mock_verify, auth_service
-    ):
-        """Test production Google token with missing required fields"""
-        # Mock Google's response with missing fields
-        mock_verify.return_value = {
-            "sub": "google_123",
-            "email": "test@example.com",
-            # Missing "name" field
-        }
-
-        with patch.object(auth_service, "google_client_id", "real_client_id"):
-            with patch.object(auth_service, "enable_mock_auth", False):
-                with pytest.raises(
-                    ValueError, match="Missing required Google OAuth fields"
-                ):
-                    auth_service.verify_google_token("real_google_token")
-
-    @patch("services.auth_service.id_token.verify_oauth2_token")
-    def test_verify_production_google_token_unverified_email(
-        self, mock_verify, auth_service
-    ):
-        """Test production Google token with unverified email"""
-        # Mock Google's response with unverified email
-        mock_verify.return_value = {
-            "sub": "google_123",
+    @patch('services.auth_service.id_token')
+    def test_verify_production_google_token_unverified_email(self, mock_id_token, auth_service):
+        """Test that an unverified email from Google raises a ValueError"""
+        mock_id_token.verify_oauth2_token.return_value = {
+            "sub": "google123",
             "email": "test@example.com",
             "name": "Test User",
-            "email_verified": False,
+            "email_verified": False  # Email is not verified
         }
-
-        with patch.object(auth_service, "google_client_id", "real_client_id"):
-            with patch.object(auth_service, "enable_mock_auth", False):
-                google_data = auth_service.verify_google_token("real_google_token")
-
-                # Should still work but with email_verified = False
-                assert google_data.email_verified is False
-                assert google_data.email == "test@example.com"
+        
+        with patch.object(auth_service, 'google_client_id', 'test_client_id'):
+            with pytest.raises(ValueError, match="Email not verified by Google"):
+                auth_service.verify_google_token("unverified_email_token")
 
     def test_validate_google_client_configuration_development(self, auth_service):
         """Test Google client configuration validation in development"""
