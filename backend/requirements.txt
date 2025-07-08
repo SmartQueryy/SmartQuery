@@ -23,7 +23,7 @@ minio==7.2.0
 
 # File processing (will be used in later tasks)
 pandas==2.1.4
-python-multipart==0.0.6
+python-multipart==0.0.18
 
 # JWT authentication
 PyJWT==2.8.0
