@@ -61,7 +61,7 @@ def test_google_login(test_client, sample_user):
 def test_get_current_user(test_client, sample_user, test_access_token):
     """Test get current user endpoint"""
     with patch(
-        "middleware.auth_middleware.auth_service.get_current_user",
+        "api.auth.auth_service.get_current_user",
         return_value=sample_user,
     ):
         response = test_client.get(
@@ -179,7 +179,7 @@ def test_invalid_token(test_client):
 def test_logout(test_client, sample_user, test_access_token):
     """Test logout endpoint"""
     with patch(
-        "middleware.auth_middleware.auth_service.get_current_user",
+        "api.auth.auth_service.get_current_user",
         return_value=sample_user,
     ):
         response = test_client.post(
