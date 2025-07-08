@@ -145,7 +145,7 @@ class TestUserServiceModels:
     def test_user_public_conversion(self, sample_user_in_db):
         """Test UserPublic conversion from UserInDB"""
         public_user = UserPublic.from_db_user(sample_user_in_db)
-        
+
         assert isinstance(public_user.id, str)
         assert public_user.email == sample_user_in_db.email
         assert public_user.name == sample_user_in_db.name
@@ -196,14 +196,14 @@ class TestUserServiceLogic:
     def test_user_service_import(self):
         """Test that UserService can be imported and instantiated"""
         from services.user_service import UserService
-        
+
         service = UserService()
         assert service is not None
 
     def test_health_check_method_exists(self):
         """Test that health_check method exists"""
         from services.user_service import UserService
-        
+
         service = UserService()
-        assert hasattr(service, 'health_check')
-        assert callable(getattr(service, 'health_check'))
+        assert hasattr(service, "health_check")
+        assert callable(getattr(service, "health_check"))
