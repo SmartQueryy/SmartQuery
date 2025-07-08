@@ -1,8 +1,9 @@
-import pytest
-from fastapi.testclient import TestClient
-import jwt
 import uuid
 from datetime import datetime, timedelta
+
+import jwt
+import pytest
+from fastapi.testclient import TestClient
 
 from main import app
 
