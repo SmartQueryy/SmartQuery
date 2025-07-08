@@ -14,10 +14,12 @@ router = APIRouter(prefix="/health", tags=["health"])
 @router.get("/")
 async def health_check() -> Dict[str, Any]:
     """Detailed health check endpoint with infrastructure service checks"""
-    
+
     # Check if we're in test environment
-    is_test_env = os.getenv("TESTING", "false").lower() == "true" or "pytest" in os.environ.get("_", "")
-    
+    is_test_env = os.getenv(
+        "TESTING", "false"
+    ).lower() == "true" or "pytest" in os.environ.get("_", "")
+
     if is_test_env:
         # Return healthy status for tests without connecting to real services
         return {
@@ -25,7 +27,7 @@ async def health_check() -> Dict[str, Any]:
             "data": {
                 "status": "healthy",
                 "service": "SmartQuery API",
-                "version": "1.0.0", 
+                "version": "1.0.0",
                 "timestamp": datetime.utcnow().isoformat() + "Z",
                 "checks": {
                     "database": True,
