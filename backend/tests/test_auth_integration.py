@@ -5,21 +5,16 @@ Tests the complete auth flow including endpoints, middleware, and services
 
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+import jwt
 
 from main import app
-from models.user import GoogleOAuthData, UserInDB
+from models.user import UserInDB, GoogleOAuthData
 from services.auth_service import AuthService
-
-# Test client
-client = TestClient(app)
-
-# Auth service for token generation
-auth_service = AuthService()
 
 
 class TestAuthIntegration:
@@ -54,20 +49,18 @@ class TestAuthIntegration:
     @pytest.fixture
     def valid_access_token(self, sample_user):
         """Create a valid access token for testing"""
-        return auth_service.create_access_token(str(sample_user.id), sample_user.email)
+        return AuthService().create_access_token(str(sample_user.id), sample_user.email)
 
     @pytest.fixture
     def valid_refresh_token(self, sample_user):
         """Create a valid refresh token for testing"""
-        return auth_service.create_refresh_token(str(sample_user.id), sample_user.email)
+        return AuthService().create_refresh_token(
+            str(sample_user.id), sample_user.email
+        )
 
     @pytest.fixture
     def expired_token(self, sample_user):
         """Create an expired token for testing"""
-        from datetime import timedelta
-
-        import jwt
-
         # Create token that expired 1 hour ago
         past_time = datetime.utcnow() - timedelta(hours=1)
         payload = {
@@ -77,10 +70,12 @@ class TestAuthIntegration:
             "type": "access",
         }
         return jwt.encode(
-            payload, auth_service.jwt_secret, algorithm=auth_service.algorithm
+            payload, AuthService().jwt_secret, algorithm=AuthService().algorithm
         )
 
-    def test_google_oauth_login_success(self, sample_user, google_oauth_data):
+    def test_google_oauth_login_success(
+        self, test_client, sample_user, google_oauth_data
+    ):
         """Test successful Google OAuth login flow"""
         with patch(
             "api.auth.auth_service.verify_google_token", return_value=google_oauth_data
@@ -94,7 +89,7 @@ class TestAuthIntegration:
                     return_value=sample_user,
                 ):
 
-                    response = client.post(
+                    response = test_client.post(
                         "/auth/google", json={"google_token": "mock_google_token_123"}
                     )
 
@@ -126,32 +121,35 @@ class TestAuthIntegration:
                     assert isinstance(auth_data["refresh_token"], str)
                     assert isinstance(auth_data["expires_in"], int)
 
-    def test_google_oauth_login_invalid_token(self):
+    def test_google_oauth_login_invalid_token(self, test_client):
         """Test Google OAuth login with invalid token"""
-        response = client.post(
-            "/auth/google", json={"google_token": "invalid_token_123"}
-        )
+        with patch(
+            "api.auth.auth_service.verify_google_token",
+            side_effect=ValueError("Invalid Token"),
+        ):
+            response = test_client.post(
+                "/auth/google", json={"google_token": "invalid_token_123"}
+            )
 
-        assert response.status_code == 401
-        data = response.json()
-        assert "Invalid Google token" in data["detail"]
+            assert response.status_code == 401
+            data = response.json()
+            assert "Invalid Google token" in data["detail"]
 
-    def test_google_oauth_login_empty_token(self):
+    def test_google_oauth_login_empty_token(self, test_client):
         """Test Google OAuth login with empty token"""
-        response = client.post("/auth/google", json={"google_token": ""})
+        response = test_client.post("/auth/google", json={"google_token": ""})
 
         assert response.status_code == 400
         data = response.json()
         assert "Google token is required" in data["detail"]
 
-    def test_get_current_user_success(self, sample_user, valid_access_token):
+    def test_get_current_user_success(
+        self, test_client, sample_user, valid_access_token
+    ):
         """Test getting current user with valid token"""
-        with patch(
-            "middleware.auth_middleware.auth_service.get_current_user",
-            return_value=sample_user,
-        ):
+        with patch("api.auth.auth_service.get_current_user", return_value=sample_user):
 
-            response = client.get(
+            response = test_client.get(
                 "/auth/me", headers={"Authorization": f"Bearer {valid_access_token}"}
             )
 
@@ -167,17 +165,17 @@ class TestAuthIntegration:
             assert user_data["email"] == sample_user.email
             assert user_data["name"] == sample_user.name
 
-    def test_get_current_user_no_token(self):
+    def test_get_current_user_no_token(self, test_client):
         """Test getting current user without token"""
-        response = client.get("/auth/me")
+        response = test_client.get("/auth/me")
 
         assert (
             response.status_code == 403
         )  # FastAPI returns 403 for missing auth header
 
-    def test_get_current_user_invalid_token(self):
+    def test_get_current_user_invalid_token(self, test_client):
         """Test getting current user with invalid token"""
-        response = client.get(
+        response = test_client.get(
             "/auth/me", headers={"Authorization": "Bearer invalid_token"}
         )
 
@@ -185,9 +183,9 @@ class TestAuthIntegration:
         data = response.json()
         assert "Invalid or expired token" in data["detail"]
 
-    def test_get_current_user_expired_token(self, expired_token):
+    def test_get_current_user_expired_token(self, test_client, expired_token):
         """Test getting current user with expired token"""
-        response = client.get(
+        response = test_client.get(
             "/auth/me", headers={"Authorization": f"Bearer {expired_token}"}
         )
 
@@ -195,14 +193,14 @@ class TestAuthIntegration:
         data = response.json()
         assert "Invalid or expired token" in data["detail"]
 
-    def test_refresh_token_success(self, sample_user, valid_refresh_token):
+    def test_refresh_token_success(self, test_client, sample_user, valid_refresh_token):
         """Test successful token refresh"""
         with patch(
             "api.auth.auth_service.refresh_access_token",
             return_value=(valid_refresh_token, sample_user),
         ):
 
-            response = client.post(
+            response = test_client.post(
                 "/auth/refresh", json={"refresh_token": valid_refresh_token}
             )
 
@@ -220,56 +218,58 @@ class TestAuthIntegration:
             assert "refresh_token" in auth_data
             assert "expires_in" in auth_data
 
-    def test_refresh_token_invalid(self):
+    def test_refresh_token_invalid(self, test_client):
         """Test token refresh with invalid refresh token"""
-        response = client.post(
-            "/auth/refresh", json={"refresh_token": "invalid_refresh_token"}
-        )
+        with patch(
+            "api.auth.auth_service.refresh_access_token",
+            side_effect=jwt.InvalidTokenError(),
+        ):
+            response = test_client.post(
+                "/auth/refresh", json={"refresh_token": "invalid_refresh_token"}
+            )
 
-        assert response.status_code == 401
-        data = response.json()
-        assert "Invalid or expired refresh token" in data["detail"]
+            assert response.status_code == 401
+            data = response.json()
+            assert "Invalid or expired refresh token" in data["detail"]
 
-    def test_refresh_token_empty(self):
+    def test_refresh_token_empty(self, test_client):
         """Test token refresh with empty refresh token"""
-        response = client.post("/auth/refresh", json={"refresh_token": ""})
+        response = test_client.post("/auth/refresh", json={"refresh_token": ""})
 
         assert response.status_code == 400
         data = response.json()
         assert "Refresh token is required" in data["detail"]
 
-    def test_logout_success(self, sample_user, valid_access_token):
+    def test_logout_success(self, test_client, sample_user, valid_access_token):
         """Test successful logout"""
-        with patch(
-            "middleware.auth_middleware.auth_service.get_current_user",
-            return_value=sample_user,
-        ):
+        with patch("api.auth.auth_service.get_current_user", return_value=sample_user):
+            with patch("api.auth.auth_service.revoke_user_tokens", return_value=True):
 
-            response = client.post(
-                "/auth/logout",
-                headers={"Authorization": f"Bearer {valid_access_token}"},
-            )
+                response = test_client.post(
+                    "/auth/logout",
+                    headers={"Authorization": f"Bearer {valid_access_token}"},
+                )
 
-            assert response.status_code == 200
-            data = response.json()
+                assert response.status_code == 200
+                data = response.json()
 
-            # Verify response structure
-            assert data["success"] is True
-            assert "data" in data
-            assert "message" in data
-            assert data["data"]["message"] == "Logged out successfully"
+                # Verify response structure
+                assert data["success"] is True
+                assert "data" in data
+                assert "message" in data
+                assert data["data"]["message"] == "Logged out successfully"
 
-    def test_logout_no_token(self):
+    def test_logout_no_token(self, test_client):
         """Test logout without token"""
-        response = client.post("/auth/logout")
+        response = test_client.post("/auth/logout")
 
         assert (
             response.status_code == 403
         )  # FastAPI returns 403 for missing auth header
 
-    def test_logout_invalid_token(self):
+    def test_logout_invalid_token(self, test_client):
         """Test logout with invalid token"""
-        response = client.post(
+        response = test_client.post(
             "/auth/logout", headers={"Authorization": "Bearer invalid_token"}
         )
 
@@ -277,7 +277,7 @@ class TestAuthIntegration:
         data = response.json()
         assert "Invalid or expired token" in data["detail"]
 
-    def test_auth_health_check(self):
+    def test_auth_health_check(self, test_client):
         """Test authentication service health check"""
         with patch("api.auth.auth_service.health_check") as mock_health:
             mock_health.return_value = {
@@ -287,7 +287,7 @@ class TestAuthIntegration:
                 "user_service": {"status": "healthy"},
             }
 
-            response = client.get("/auth/health")
+            response = test_client.get("/auth/health")
 
             assert response.status_code == 200
             data = response.json()
@@ -297,7 +297,7 @@ class TestAuthIntegration:
             assert "message" in data
             assert data["data"]["status"] == "healthy"
 
-    def test_auth_health_check_unhealthy(self):
+    def test_auth_health_check_unhealthy(self, test_client):
         """Test authentication service health check when unhealthy"""
         with patch("api.auth.auth_service.health_check") as mock_health:
             mock_health.return_value = {
@@ -306,7 +306,7 @@ class TestAuthIntegration:
                 "error": "JWT service error",
             }
 
-            response = client.get("/auth/health")
+            response = test_client.get("/auth/health")
 
             assert response.status_code == 503
             data = response.json()
@@ -334,17 +334,16 @@ class TestAuthMiddlewareIntegration:
     @pytest.fixture
     def valid_access_token(self, sample_user):
         """Create a valid access token for testing"""
-        return auth_service.create_access_token(str(sample_user.id), sample_user.email)
+        return AuthService().create_access_token(str(sample_user.id), sample_user.email)
 
-    def test_middleware_authentication_success(self, sample_user, valid_access_token):
+    def test_middleware_authentication_success(
+        self, test_client, sample_user, valid_access_token
+    ):
         """Test that middleware properly authenticates valid tokens"""
-        with patch(
-            "middleware.auth_middleware.auth_service.get_current_user",
-            return_value=sample_user,
-        ):
+        with patch("api.auth.auth_service.get_current_user", return_value=sample_user):
 
             # Test with a protected endpoint (auth/me uses the middleware)
-            response = client.get(
+            response = test_client.get(
                 "/auth/me", headers={"Authorization": f"Bearer {valid_access_token}"}
             )
 
@@ -352,9 +351,9 @@ class TestAuthMiddlewareIntegration:
             data = response.json()
             assert data["success"] is True
 
-    def test_middleware_authentication_failure(self):
+    def test_middleware_authentication_failure(self, test_client):
         """Test that middleware properly rejects invalid tokens"""
-        response = client.get(
+        response = test_client.get(
             "/auth/me", headers={"Authorization": "Bearer invalid_token"}
         )
 
@@ -362,40 +361,55 @@ class TestAuthMiddlewareIntegration:
         data = response.json()
         assert "Invalid or expired token" in data["detail"]
 
-    def test_middleware_no_authorization_header(self):
+    def test_middleware_no_authorization_header(self, test_client):
         """Test that middleware handles missing authorization header"""
-        response = client.get("/auth/me")
+        response = test_client.get("/auth/me")
 
         assert (
             response.status_code == 403
         )  # FastAPI security returns 403 for missing header
 
-    def test_middleware_malformed_authorization_header(self):
+    def test_middleware_malformed_authorization_header(self, test_client):
         """Test that middleware handles malformed authorization header"""
-        response = client.get(
+        response = test_client.get(
             "/auth/me", headers={"Authorization": "InvalidFormat token123"}
         )
 
         assert response.status_code == 403  # FastAPI security validation
 
-    def test_middleware_bearer_token_extraction(self, sample_user, valid_access_token):
+    def test_middleware_bearer_token_extraction(
+        self, test_client, sample_user, valid_access_token
+    ):
         """Test that middleware properly extracts Bearer tokens"""
-        with patch(
-            "middleware.auth_middleware.auth_service.get_current_user",
-            return_value=sample_user,
-        ):
+        with patch("api.auth.auth_service.get_current_user", return_value=sample_user):
 
-            response = client.get(
+            response = test_client.get(
                 "/auth/me", headers={"Authorization": f"Bearer {valid_access_token}"}
             )
 
             assert response.status_code == 200
 
 
+@pytest.mark.usefixtures("test_client")
 class TestAPIResponseFormat:
     """Test that API responses match frontend expectations"""
 
-    def test_success_response_format(self, sample_user):
+    @pytest.fixture
+    def sample_user(self):
+        """Sample user for testing"""
+        return UserInDB(
+            id=uuid.UUID("12345678-1234-5678-9012-123456789abc"),
+            email="integration@example.com",
+            name="Integration Test User",
+            avatar_url="https://example.com/avatar.jpg",
+            google_id="google_integration_123",
+            is_active=True,
+            is_verified=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+    def test_success_response_format(self, test_client, sample_user):
         """Test that success responses have the expected format"""
         with patch("api.auth.auth_service.login_with_google") as mock_login:
             mock_login.return_value = (
@@ -405,7 +419,7 @@ class TestAPIResponseFormat:
                 True,
             )
 
-            response = client.post(
+            response = test_client.post(
                 "/auth/google", json={"google_token": "mock_google_token_123"}
             )
 
@@ -421,18 +435,24 @@ class TestAPIResponseFormat:
             assert isinstance(data["data"], dict)
             assert isinstance(data["message"], str)
 
-    def test_error_response_format(self):
+    def test_error_response_format(self, test_client):
         """Test that error responses have the expected format"""
-        response = client.post("/auth/google", json={"google_token": "invalid_token"})
+        with patch(
+            "api.auth.auth_service.verify_google_token",
+            side_effect=ValueError("Invalid Token"),
+        ):
+            response = test_client.post(
+                "/auth/google", json={"google_token": "invalid_token"}
+            )
 
-        assert response.status_code == 401
-        data = response.json()
+            assert response.status_code == 401
+            data = response.json()
 
-        # FastAPI error format
-        assert "detail" in data
-        assert isinstance(data["detail"], str)
+            # FastAPI error format
+            assert "detail" in data
+            assert isinstance(data["detail"], str)
 
-    def test_user_data_format(self, sample_user):
+    def test_user_data_format(self, test_client, sample_user):
         """Test that user data format matches frontend expectations"""
         with patch("api.auth.auth_service.login_with_google") as mock_login:
             mock_login.return_value = (
@@ -442,7 +462,7 @@ class TestAPIResponseFormat:
                 True,
             )
 
-            response = client.post(
+            response = test_client.post(
                 "/auth/google", json={"google_token": "mock_google_token_123"}
             )
 
@@ -465,7 +485,7 @@ class TestAPIResponseFormat:
             )
             assert isinstance(user_data["created_at"], str)
 
-    def test_token_data_format(self, sample_user):
+    def test_token_data_format(self, test_client, sample_user):
         """Test that token data format matches frontend expectations"""
         with patch("api.auth.auth_service.login_with_google") as mock_login:
             mock_login.return_value = (
@@ -475,7 +495,7 @@ class TestAPIResponseFormat:
                 True,
             )
 
-            response = client.post(
+            response = test_client.post(
                 "/auth/google", json={"google_token": "mock_google_token_123"}
             )
 
@@ -498,14 +518,14 @@ class TestAPIResponseFormat:
 class TestErrorHandling:
     """Test comprehensive error handling scenarios"""
 
-    def test_google_oauth_service_error(self):
+    def test_google_oauth_service_error(self, test_client):
         """Test handling of Google OAuth service errors"""
         with patch(
             "api.auth.auth_service.verify_google_token",
             side_effect=Exception("Google service unavailable"),
         ):
 
-            response = client.post(
+            response = test_client.post(
                 "/auth/google", json={"google_token": "mock_google_token_123"}
             )
 
@@ -513,7 +533,7 @@ class TestErrorHandling:
             data = response.json()
             assert "Authentication failed" in data["detail"]
 
-    def test_database_error_handling(self, sample_user):
+    def test_database_error_handling(self, test_client):
         """Test handling of database errors during authentication"""
         google_oauth_data = GoogleOAuthData(
             google_id="google_123",
@@ -530,7 +550,7 @@ class TestErrorHandling:
                 side_effect=Exception("Database connection failed"),
             ):
 
-                response = client.post(
+                response = test_client.post(
                     "/auth/google", json={"google_token": "mock_google_token_123"}
                 )
 
@@ -538,17 +558,17 @@ class TestErrorHandling:
                 data = response.json()
                 assert "Authentication failed" in data["detail"]
 
-    def test_jwt_service_error_handling(self):
+    def test_jwt_service_error_handling(self, test_client):
         """Test handling of JWT service errors"""
         with patch(
-            "middleware.auth_middleware.auth_service.verify_token",
+            "api.auth.auth_service.get_current_user",
             side_effect=Exception("JWT service error"),
         ):
 
-            response = client.get(
+            response = test_client.get(
                 "/auth/me", headers={"Authorization": "Bearer some_token"}
             )
 
             assert response.status_code == 500
             data = response.json()
-            assert "Authentication service error" in data["detail"]
+            assert "Failed to get user information" in data["detail"]

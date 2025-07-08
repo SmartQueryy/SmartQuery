@@ -5,38 +5,44 @@ from typing import Any, Dict, Optional
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
+from models.base import Base
+
 logger = logging.getLogger(__name__)
 
 
 class DatabaseService:
-    """Database service for PostgreSQL operations"""
+    """Service to manage database connections"""
 
     def __init__(self):
-        self.database_url = os.getenv(
-            "DATABASE_URL",
-            "postgresql://smartquery_user:smartquery_dev_password@localhost:5432/smartquery",
-        )
         self.engine = None
         self.SessionLocal = None
+        self.connect()
 
-    def connect(self) -> bool:
-        """Establish database connection"""
+    def connect(self):
+        """Establish connection to the database"""
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            logger.error("DATABASE_URL environment variable not set.")
+            raise ValueError("DATABASE_URL environment variable not set.")
+
         try:
-            self.engine = create_engine(self.database_url)
+            # Add SQLite-specific configuration for testing
+            engine_kwargs = {}
+            if db_url.startswith("sqlite://"):
+                engine_kwargs["connect_args"] = {"check_same_thread": False}
+
+            self.engine = create_engine(db_url, **engine_kwargs)
             self.SessionLocal = sessionmaker(
                 autocommit=False, autoflush=False, bind=self.engine
             )
-
-            # Test connection
-            with self.engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
-
-            logger.info("Database connection established successfully")
-            return True
-
+            logger.info("Database connection established successfully.")
         except Exception as e:
-            logger.error(f"Failed to connect to database: {str(e)}")
-            return False
+            logger.error(f"Failed to connect to database: {e}")
+            raise
+
+    def reconnect(self):
+        """Force a reconnection to the database."""
+        self.connect()
 
     def health_check(self) -> Dict[str, Any]:
         """Check database health"""
@@ -45,27 +51,44 @@ class DatabaseService:
                 self.connect()
 
             with self.engine.connect() as conn:
-                result = conn.execute(text("SELECT version()"))
-                version = result.fetchone()[0]
+                # Use database-specific version query
+                if self.engine.dialect.name == "postgresql":
+                    result = conn.execute(text("SELECT version()"))
+                    version = result.fetchone()[0]
+                elif self.engine.dialect.name == "sqlite":
+                    result = conn.execute(text("SELECT sqlite_version()"))
+                    version = f"SQLite {result.fetchone()[0]}"
+                else:
+                    version = f"{self.engine.dialect.name} (version unknown)"
 
-                # Get basic stats
-                stats_query = text(
+                # Get basic stats - handle potential missing tables
+                user_count = 0
+                project_count = 0
+                message_count = 0
+                try:
+                    stats_query = text(
+                        """
+                        SELECT 
+                            (SELECT count(*) FROM users) as user_count,
+                            (SELECT count(*) FROM projects) as project_count,
+                            (SELECT count(*) FROM chat_messages) as message_count
                     """
-                    SELECT 
-                        (SELECT count(*) FROM users) as user_count,
-                        (SELECT count(*) FROM projects) as project_count,
-                        (SELECT count(*) FROM chat_messages) as message_count
-                """
-                )
-                stats = conn.execute(stats_query).fetchone()
+                    )
+                    stats = conn.execute(stats_query).fetchone()
+                    user_count = stats.user_count
+                    project_count = stats.project_count
+                    message_count = stats.message_count
+                except Exception:
+                    # If tables don't exist, we can ignore for health check
+                    pass
 
                 return {
                     "status": "healthy",
                     "version": version,
                     "stats": {
-                        "users": stats.user_count,
-                        "projects": stats.project_count,
-                        "messages": stats.message_count,
+                        "users": user_count,
+                        "projects": project_count,
+                        "messages": message_count,
                     },
                 }
 
@@ -82,8 +105,6 @@ class DatabaseService:
     def create_tables(self):
         """Create database tables using SQLAlchemy models"""
         try:
-            from models.user import Base
-
             if not self.engine:
                 self.connect()
 
@@ -124,5 +145,21 @@ class DatabaseService:
             return False
 
 
-# Global database service instance
-db_service = DatabaseService()
+_db_service_instance = None
+
+
+def get_db_service():
+    """Returns a singleton instance of the DatabaseService."""
+    global _db_service_instance
+    if _db_service_instance is None:
+        _db_service_instance = DatabaseService()
+    return _db_service_instance
+
+
+def get_db():
+    """FastAPI dependency to get a DB session"""
+    db = get_db_service().get_session()
+    try:
+        yield db
+    finally:
+        db.close()

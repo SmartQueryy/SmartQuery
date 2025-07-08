@@ -178,7 +178,7 @@ class TestAuthService:
                 with pytest.raises(ValueError):
                     auth_service.verify_google_token("mock_google_token_123")
 
-    @patch('services.auth_service.id_token')
+    @patch("services.auth_service.id_token")
     def test_verify_production_google_token_success(self, mock_id_token, auth_service):
         """Test successful verification of a production Google token"""
         mock_id_token.verify_oauth2_token.return_value = {
@@ -186,27 +186,28 @@ class TestAuthService:
             "email": "test@example.com",
             "name": "Test User",
             "picture": "https://example.com/avatar.jpg",
-            "email_verified": True
+            "email_verified": True,
         }
-        
-        with patch.object(auth_service, 'google_client_id', 'test_client_id'):
+
+        with patch.object(auth_service, "google_client_id", "test_client_id"):
             google_data = auth_service.verify_google_token("valid_token")
-            
+
             assert google_data.google_id == "google123"
             assert google_data.email == "test@example.com"
 
-
-    @patch('services.auth_service.id_token')
-    def test_verify_production_google_token_unverified_email(self, mock_id_token, auth_service):
+    @patch("services.auth_service.id_token")
+    def test_verify_production_google_token_unverified_email(
+        self, mock_id_token, auth_service
+    ):
         """Test that an unverified email from Google raises a ValueError"""
         mock_id_token.verify_oauth2_token.return_value = {
             "sub": "google123",
             "email": "test@example.com",
             "name": "Test User",
-            "email_verified": False  # Email is not verified
+            "email_verified": False,  # Email is not verified
         }
-        
-        with patch.object(auth_service, 'google_client_id', 'test_client_id'):
+
+        with patch.object(auth_service, "google_client_id", "test_client_id"):
             with pytest.raises(ValueError, match="Email not verified by Google"):
                 auth_service.verify_google_token("unverified_email_token")
 

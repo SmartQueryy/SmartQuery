@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer
 
 from models.response_schemas import ApiResponse, AuthResponse, LoginRequest, User
-from models.user import UserPublic
+from models.user import UserInDB
 from services.auth_service import AuthService
 
 # Configure logging
@@ -38,17 +38,14 @@ async def login_with_google(request: LoginRequest) -> ApiResponse[AuthResponse]:
             request.google_token.strip()
         )
 
-        # Convert UserInDB to UserPublic for API response
-        public_user = UserPublic.from_db_user(user)
-
-        # Convert to response format expected by frontend
+        # Convert UserInDB to the response model directly
         user_response = User(
-            id=public_user.id,
-            email=public_user.email,
-            name=public_user.name,
-            avatar_url=public_user.avatar_url,
-            created_at=public_user.created_at,
-            last_sign_in_at=public_user.last_sign_in_at,
+            id=str(user.id),
+            email=user.email,
+            name=user.name,
+            avatar_url=user.avatar_url,
+            created_at=user.created_at.isoformat(),
+            last_sign_in_at=user.updated_at.isoformat(),  # Using updated_at for last sign-in
         )
 
         auth_response = AuthResponse(
@@ -71,6 +68,9 @@ async def login_with_google(request: LoginRequest) -> ApiResponse[AuthResponse]:
             ),
         )
 
+    except HTTPException:
+        # Re-raise HTTPException without modification
+        raise
     except ValueError as e:
         logger.error(f"Google OAuth validation error: {str(e)}")
         raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
@@ -88,15 +88,15 @@ async def get_current_user(
         logger.info("Received current user request")
 
         user = auth_service.get_current_user(token)
-        public_user = UserPublic.from_db_user(user)
 
+        # Convert UserInDB to the response model directly
         user_response = User(
-            id=public_user.id,
-            email=public_user.email,
-            name=public_user.name,
-            avatar_url=public_user.avatar_url,
-            created_at=public_user.created_at,
-            last_sign_in_at=public_user.last_sign_in_at,
+            id=str(user.id),
+            email=user.email,
+            name=user.name,
+            avatar_url=user.avatar_url,
+            created_at=user.created_at.isoformat(),
+            last_sign_in_at=user.updated_at.isoformat(),  # Using updated_at for last sign-in
         )
 
         logger.info(f"Current user request successful for: {user.email}")
@@ -164,14 +164,13 @@ async def refresh_token(request: dict) -> ApiResponse[AuthResponse]:
         )
 
         # Convert to response format
-        public_user = UserPublic.from_db_user(user)
         user_response = User(
-            id=public_user.id,
-            email=public_user.email,
-            name=public_user.name,
-            avatar_url=public_user.avatar_url,
-            created_at=public_user.created_at,
-            last_sign_in_at=public_user.last_sign_in_at,
+            id=str(user.id),
+            email=user.email,
+            name=user.name,
+            avatar_url=user.avatar_url,
+            created_at=user.created_at.isoformat(),
+            last_sign_in_at=user.updated_at.isoformat(),
         )
 
         auth_response = AuthResponse(
@@ -186,6 +185,9 @@ async def refresh_token(request: dict) -> ApiResponse[AuthResponse]:
             success=True, data=auth_response, message="Token refreshed successfully"
         )
 
+    except HTTPException:
+        # Re-raise HTTPException without modification
+        raise
     except jwt.InvalidTokenError as e:
         logger.warning(f"Invalid refresh token: {str(e)}")
         raise HTTPException(
@@ -219,6 +221,9 @@ async def auth_health_check() -> ApiResponse[dict]:
                 detail=f"Authentication service is unhealthy: {health_data.get('error', 'Unknown error')}",
             )
 
+    except HTTPException:
+        # Re-raise HTTPException without modification
+        raise
     except Exception as e:
         logger.error(f"Auth health check error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")

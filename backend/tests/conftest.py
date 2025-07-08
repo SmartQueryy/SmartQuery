@@ -24,15 +24,15 @@ def test_db_setup():
     # Force the database service to use the test URL
     db_service = get_db_service()
     db_service.reconnect()
-    
+
     # Ensure all services are imported to register models
     _ = get_user_service()
-    
+
     # Create tables
     Base.metadata.create_all(bind=db_service.engine)
-    
+
     yield
-    
+
     # Drop tables
     Base.metadata.drop_all(bind=db_service.engine)
 
@@ -44,4 +44,4 @@ def test_client(test_db_setup):
     Each test function gets a clean database.
     """
     with TestClient(app) as client:
-        yield client 
+        yield client
