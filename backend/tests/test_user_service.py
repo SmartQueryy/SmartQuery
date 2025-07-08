@@ -14,6 +14,7 @@ from models.user import (
     UserTable,
     UserUpdate,
 )
+from services.user_service import UserService
 
 
 class TestUserService:
