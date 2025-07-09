@@ -2,7 +2,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Set, Tuple
 
 import jwt
 from google.auth.exceptions import GoogleAuthError
@@ -24,6 +24,11 @@ class TokenData(BaseModel):
     user_id: str
     email: str
     exp: datetime
+    jti: Optional[str] = None  # JWT ID for token tracking
+
+
+# In-memory token blacklist (in production, use Redis)
+_token_blacklist: Set[str] = set()
 
 
 class AuthService:
@@ -52,31 +57,44 @@ class AuthService:
         logger.info(f"Mock auth enabled: {self.enable_mock_auth}")
 
     def create_access_token(self, user_id: str, email: str) -> str:
-        """Create JWT access token"""
+        """Create JWT access token with unique JWT ID"""
         expire = datetime.utcnow() + timedelta(minutes=self.access_token_expire_minutes)
+        jti = str(uuid.uuid4())  # Unique token identifier
         to_encode = {
             "sub": user_id,
             "email": email,
             "exp": expire,
             "iat": datetime.utcnow(),
             "type": "access",
+            "jti": jti,
         }
         return jwt.encode(to_encode, self.jwt_secret, algorithm=self.algorithm)
 
     def create_refresh_token(self, user_id: str, email: str) -> str:
-        """Create JWT refresh token"""
+        """Create JWT refresh token with unique JWT ID"""
         expire = datetime.utcnow() + timedelta(days=self.refresh_token_expire_days)
+        jti = str(uuid.uuid4())  # Unique token identifier
         to_encode = {
             "sub": user_id,
             "email": email,
             "exp": expire,
             "iat": datetime.utcnow(),
             "type": "refresh",
+            "jti": jti,
         }
         return jwt.encode(to_encode, self.jwt_secret, algorithm=self.algorithm)
 
+    def _is_token_blacklisted(self, jti: str) -> bool:
+        """Check if token is blacklisted"""
+        return jti in _token_blacklist
+
+    def _blacklist_token(self, jti: str) -> None:
+        """Add token to blacklist"""
+        _token_blacklist.add(jti)
+        logger.info(f"Token blacklisted: {jti}")
+
     def verify_token(self, token: str, token_type: str = "access") -> TokenData:
-        """Verify JWT token and return token data"""
+        """Verify JWT token and return token data with blacklist check"""
         try:
             payload = jwt.decode(token, self.jwt_secret, algorithms=[self.algorithm])
 
@@ -92,6 +110,11 @@ class AuthService:
             ):
                 raise jwt.InvalidTokenError("Token has expired")
 
+            # Check if token is blacklisted
+            jti = payload.get("jti")
+            if jti and self._is_token_blacklisted(jti):
+                raise jwt.InvalidTokenError("Token has been revoked")
+
             return TokenData(
                 user_id=payload.get("sub"),
                 email=payload.get("email"),
@@ -100,6 +123,7 @@ class AuthService:
                     if exp_timestamp
                     else datetime.utcnow()
                 ),
+                jti=jti,
             )
         except jwt.ExpiredSignatureError:
             raise jwt.InvalidTokenError("Token has expired")
@@ -316,15 +340,44 @@ class AuthService:
             logger.error(f"Get current user failed: {str(e)}")
             raise
 
-    def revoke_user_tokens(self, user_id: str) -> bool:
+    def revoke_token_by_jti(self, jti: str) -> bool:
+        """Revoke a specific token by its JWT ID"""
+        if not jti:
+            logger.warning("Attempted to revoke token without JTI")
+            return False
+
+        self._blacklist_token(jti)
+        return True
+
+    def revoke_user_tokens(
+        self, user_id: str, access_token: Optional[str] = None
+    ) -> bool:
         """
-        Revoke all tokens for a user (logout)
-        Note: With JWT, we can't actually revoke tokens server-side without a blacklist.
-        This is a placeholder for future token blacklist implementation.
+        Revoke user tokens (logout with proper token blacklisting)
+        In a production system, you would query all active tokens for the user.
+        For now, we blacklist the current access token if provided.
         """
         logger.info(f"Token revocation requested for user: {user_id}")
-        # In a production system, you would add the user's tokens to a blacklist
-        # For now, we just return True as logout is handled client-side
+
+        if access_token:
+            try:
+                # Verify the token to get its JTI before blacklisting
+                token_data = self.verify_token(access_token, token_type="access")
+                if token_data.jti:
+                    self._blacklist_token(token_data.jti)
+                    logger.info(f"Successfully revoked token for user: {user_id}")
+                    return True
+                else:
+                    logger.warning(f"Token missing JTI for user: {user_id}")
+                    return False
+            except jwt.InvalidTokenError as e:
+                logger.warning(
+                    f"Invalid token during revocation for user {user_id}: {str(e)}"
+                )
+                return False
+
+        # If no token provided, still consider it successful
+        # (client-side logout without server-side token invalidation)
         return True
 
     def validate_google_client_configuration(self) -> Dict[str, any]:
@@ -348,6 +401,14 @@ class AuthService:
             config_status["production_ready"] = True
 
         return config_status
+
+    def get_blacklist_stats(self) -> Dict[str, any]:
+        """Get token blacklist statistics"""
+        return {
+            "blacklisted_tokens": len(_token_blacklist),
+            "implementation": "in_memory",
+            "note": "In production, use Redis for distributed blacklist",
+        }
 
     def health_check(self) -> Dict[str, any]:
         """Enhanced health check for auth service"""
@@ -383,6 +444,7 @@ class AuthService:
             "jwt_working": jwt_working,
             "user_service": user_health,
             "google_oauth": google_config,
+            "token_blacklist": self.get_blacklist_stats(),
             "environment": self.environment,
             "access_token_expire_minutes": self.access_token_expire_minutes,
             "refresh_token_expire_days": self.refresh_token_expire_days,
