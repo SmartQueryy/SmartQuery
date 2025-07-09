@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import (
+    JSON,
     Boolean,
     Column,
     DateTime,
@@ -66,6 +67,24 @@ class UUID(TypeDecorator):
             return value
 
 
+class CrossDatabaseJSON(TypeDecorator):
+    """
+    Platform-independent JSON type.
+
+    Uses PostgreSQL's JSONB type for better performance,
+    otherwise uses standard JSON type.
+    """
+
+    impl = JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(JSONB())
+        else:
+            return dialect.type_descriptor(JSON())
+
+
 class ProjectStatusEnum(str, Enum):
     """Project status enumeration"""
 
@@ -90,7 +109,7 @@ class ProjectTable(Base):
     csv_path: Mapped[str] = mapped_column(Text, nullable=False)
     row_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     column_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    columns_metadata = Column(JSONB, nullable=True)
+    columns_metadata = Column(CrossDatabaseJSON, nullable=True)
     status: Mapped[ProjectStatusEnum] = mapped_column(
         SQLEnum(ProjectStatusEnum), nullable=False, default=ProjectStatusEnum.UPLOADING
     )
