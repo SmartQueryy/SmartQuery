@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import Boolean, Column, DateTime, String, Text, TypeDecorator, func
@@ -8,6 +8,9 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 from models.base import Base
+
+if TYPE_CHECKING:
+    from models.project import ProjectTable
 
 
 class UUID(TypeDecorator):
@@ -70,9 +73,9 @@ class UserTable(Base):
     )
 
     # Relationships
-    # projects: Mapped[List["ProjectTable"]] = relationship(
-    #     back_populates="user", cascade="all, delete-orphan"
-    # )
+    projects: Mapped[List["ProjectTable"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
     # chat_messages: Mapped[List["ChatMessageTable"]] = relationship(
     #     back_populates="user", cascade="all, delete-orphan"
     # )
