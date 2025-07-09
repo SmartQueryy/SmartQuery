@@ -60,6 +60,8 @@ class TestAuthService:
         assert payload["sub"] == user_id
         assert payload["email"] == email
         assert payload["type"] == "access"
+        assert "jti" in payload
+        assert payload["jti"] is not None
 
     def test_create_refresh_token(self, auth_service):
         """Test refresh token creation"""
@@ -75,6 +77,8 @@ class TestAuthService:
         assert payload["sub"] == user_id
         assert payload["email"] == email
         assert payload["type"] == "refresh"
+        assert "jti" in payload
+        assert payload["jti"] is not None
 
     def test_verify_access_token_success(self, auth_service):
         """Test successful access token verification"""
@@ -87,6 +91,7 @@ class TestAuthService:
         assert isinstance(token_data, TokenData)
         assert token_data.user_id == user_id
         assert token_data.email == email
+        assert token_data.jti is not None
 
     def test_verify_refresh_token_success(self, auth_service):
         """Test successful refresh token verification"""
@@ -99,6 +104,7 @@ class TestAuthService:
         assert isinstance(token_data, TokenData)
         assert token_data.user_id == user_id
         assert token_data.email == email
+        assert token_data.jti is not None
 
     def test_verify_invalid_token(self, auth_service):
         """Test invalid token verification"""
@@ -403,6 +409,57 @@ class TestAuthService:
                 auth_service.get_current_user(access_token)
 
     def test_revoke_user_tokens(self, auth_service):
-        """Test token revocation (placeholder implementation)"""
+        """Test token revocation with proper blacklisting"""
+        # Test without access token
         result = auth_service.revoke_user_tokens("test_user_123")
         assert result is True
+
+        # Test with access token
+        access_token = auth_service.create_access_token(
+            "test_user_123", "test@example.com"
+        )
+        result = auth_service.revoke_user_tokens(
+            "test_user_123", access_token=access_token
+        )
+        assert result is True
+
+        # Verify token is now blacklisted
+        with pytest.raises(jwt.InvalidTokenError, match="Token has been revoked"):
+            auth_service.verify_token(access_token)
+
+    def test_revoke_token_by_jti(self, auth_service):
+        """Test token revocation by JWT ID"""
+        # Test with valid JTI
+        result = auth_service.revoke_token_by_jti("test_jti_123")
+        assert result is True
+
+        # Test with empty JTI
+        result = auth_service.revoke_token_by_jti("")
+        assert result is False
+
+    def test_token_blacklisting(self, auth_service):
+        """Test comprehensive token blacklisting functionality"""
+        user_id = "test_user_123"
+        email = "test@example.com"
+
+        # Create token
+        token = auth_service.create_access_token(user_id, email)
+
+        # Verify token works initially
+        token_data = auth_service.verify_token(token)
+        assert token_data.user_id == user_id
+        assert token_data.jti is not None
+
+        # Blacklist the token
+        auth_service._blacklist_token(token_data.jti)
+
+        # Verify token is now rejected
+        with pytest.raises(jwt.InvalidTokenError, match="Token has been revoked"):
+            auth_service.verify_token(token)
+
+    def test_get_blacklist_stats(self, auth_service):
+        """Test blacklist statistics"""
+        stats = auth_service.get_blacklist_stats()
+        assert "blacklisted_tokens" in stats
+        assert "implementation" in stats
+        assert stats["implementation"] == "in_memory"

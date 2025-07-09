@@ -6,7 +6,13 @@ import jwt
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer
 
-from models.response_schemas import ApiResponse, AuthResponse, LoginRequest, User
+from models.response_schemas import (
+    ApiResponse,
+    AuthResponse,
+    LoginRequest,
+    RefreshTokenRequest,
+    User,
+)
 from models.user import UserInDB
 from services.auth_service import AuthService
 
@@ -116,15 +122,15 @@ async def get_current_user(
 
 @router.post("/logout")
 async def logout(token: str = Depends(get_current_user_token)) -> ApiResponse[dict]:
-    """Logout current user with enhanced logging"""
+    """Logout current user with enhanced logging and token blacklisting"""
     try:
         logger.info("Received logout request")
 
         # Verify token and get user for logging
         user = auth_service.get_current_user(token)
 
-        # Revoke tokens (placeholder implementation)
-        success = auth_service.revoke_user_tokens(str(user.id))
+        # Revoke tokens with proper blacklisting
+        success = auth_service.revoke_user_tokens(str(user.id), access_token=token)
 
         if success:
             logger.info(f"Logout successful for user: {user.email}")
@@ -148,19 +154,18 @@ async def logout(token: str = Depends(get_current_user_token)) -> ApiResponse[di
 
 
 @router.post("/refresh")
-async def refresh_token(request: dict) -> ApiResponse[AuthResponse]:
+async def refresh_token(request: RefreshTokenRequest) -> ApiResponse[AuthResponse]:
     """Refresh access token with enhanced validation"""
     try:
         logger.info("Received token refresh request")
 
         # Validate request
-        refresh_token = request.get("refresh_token")
-        if not refresh_token or not refresh_token.strip():
+        if not request.refresh_token or not request.refresh_token.strip():
             logger.warning("Empty refresh token received")
             raise HTTPException(status_code=400, detail="Refresh token is required")
 
         new_access_token, user = auth_service.refresh_access_token(
-            refresh_token.strip()
+            request.refresh_token.strip()
         )
 
         # Convert to response format
@@ -176,7 +181,7 @@ async def refresh_token(request: dict) -> ApiResponse[AuthResponse]:
         auth_response = AuthResponse(
             user=user_response,
             access_token=new_access_token,
-            refresh_token=refresh_token,  # Keep the same refresh token
+            refresh_token=request.refresh_token,  # Keep the same refresh token
             expires_in=auth_service.access_token_expire_minutes * 60,
         )
 
