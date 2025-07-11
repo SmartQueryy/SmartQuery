@@ -6,7 +6,6 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from middleware.auth_middleware import verify_token
-from services.project_service import get_project_service
 from models.response_schemas import (
     ApiResponse,
     ChatMessage,
@@ -17,6 +16,7 @@ from models.response_schemas import (
     SendMessageRequest,
     SendMessageResponse,
 )
+from services.project_service import get_project_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 project_service = get_project_service()
