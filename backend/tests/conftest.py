@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 # Set environment variables for testing BEFORE importing the application
-os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["DATABASE_URL"] = "sqlite:///test.db"  # Use file-based SQLite for tests
 os.environ["JWT_SECRET"] = "test_secret"
 os.environ["TESTING"] = "true"
 
@@ -49,5 +49,10 @@ def test_client(test_db_setup):
     A TestClient that uses the in-memory SQLite database.
     Each test function gets a clean database.
     """
+    # Ensure tables are created for each test
+    db_service = get_db_service()
+    Base.metadata.drop_all(bind=db_service.engine)  # Clean slate
+    Base.metadata.create_all(bind=db_service.engine)  # Recreate tables
+
     with TestClient(app) as client:
         yield client
