@@ -141,7 +141,9 @@ def test_get_projects(
         app.dependency_overrides.clear()
 
 
-def test_create_project(test_client, test_access_token, test_user_in_db):
+def test_create_project(
+    test_client, test_access_token, test_user_in_db, mock_storage_service
+):
     """Test create project endpoint"""
     app.dependency_overrides[verify_token] = mock_verify_token
     try:
@@ -303,7 +305,11 @@ def test_project_status(
 
 
 def test_get_upload_url(
-    test_client, test_access_token, test_user_in_db, test_project_in_db
+    test_client,
+    test_access_token,
+    test_user_in_db,
+    test_project_in_db,
+    mock_storage_service,
 ):
     """Test get upload URL endpoint"""
     app.dependency_overrides[verify_token] = mock_verify_token
@@ -352,7 +358,9 @@ def test_invalid_google_token(test_client):
         assert response.status_code == 401
 
 
-def test_project_not_found(test_client, test_access_token, test_user_in_db):
+def test_project_not_found(
+    test_client, test_access_token, test_user_in_db, mock_storage_service
+):
     """Test project not found error"""
     app.dependency_overrides[verify_token] = mock_verify_token
     try:

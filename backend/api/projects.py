@@ -185,6 +185,9 @@ async def get_project(
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid project ID: {str(e)}")
+    except HTTPException:
+        # Re-raise HTTPExceptions without wrapping them
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch project: {str(e)}"
@@ -217,6 +220,9 @@ async def delete_project(
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid project ID: {str(e)}")
+    except HTTPException:
+        # Re-raise HTTPExceptions without wrapping them
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to delete project: {str(e)}"
@@ -255,6 +261,9 @@ async def get_upload_url(
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid project ID: {str(e)}")
+    except HTTPException:
+        # Re-raise HTTPExceptions without wrapping them
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to generate upload URL: {str(e)}"
@@ -309,6 +318,9 @@ async def get_project_status(
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid project ID: {str(e)}")
+    except HTTPException:
+        # Re-raise HTTPExceptions without wrapping them
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch project status: {str(e)}"
