@@ -208,6 +208,13 @@ async def delete_project(
         if not project_service.check_project_ownership(project_uuid, user_uuid):
             raise HTTPException(status_code=404, detail="Project not found")
 
+        # Get project to find the file path before deletion
+        project_db = project_service.get_project_by_id(project_uuid)
+        if project_db and project_db.csv_path:
+            # Delete file from MinIO storage
+            object_name = f"{user_id}/{project_id}/data.csv"
+            storage_service.delete_file(object_name)
+
         # Delete project from database
         success = project_service.delete_project(project_uuid)
 
