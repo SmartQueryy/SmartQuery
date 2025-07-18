@@ -102,6 +102,51 @@ class StorageService:
             logger.error(f"Error checking file existence for {object_name}: {str(e)}")
             return False
 
+    def download_file(self, object_name: str) -> Optional[bytes]:
+        """Download file from storage"""
+        try:
+            client = self.get_client()
+            response = client.get_object(self.bucket_name, object_name)
+            return response.read()
+        except S3Error as e:
+            logger.error(f"File not found in storage: {object_name}")
+            return None
+        except Exception as e:
+            logger.error(f"Error downloading file {object_name}: {str(e)}")
+            return None
+
+    def delete_file(self, object_name: str) -> bool:
+        """Delete file from storage"""
+        try:
+            client = self.get_client()
+            client.remove_object(self.bucket_name, object_name)
+            logger.info(f"Deleted file: {object_name}")
+            return True
+        except S3Error as e:
+            logger.error(f"File not found for deletion: {object_name}")
+            return False
+        except Exception as e:
+            logger.error(f"Error deleting file {object_name}: {str(e)}")
+            return False
+
+    def get_file_info(self, object_name: str) -> Optional[Dict[str, Any]]:
+        """Get file information (size, last modified, etc.)"""
+        try:
+            client = self.get_client()
+            stat = client.stat_object(self.bucket_name, object_name)
+            return {
+                "size": stat.size,
+                "last_modified": stat.last_modified,
+                "etag": stat.etag,
+                "content_type": stat.content_type,
+            }
+        except S3Error as e:
+            logger.error(f"File not found: {object_name}")
+            return None
+        except Exception as e:
+            logger.error(f"Error getting file info for {object_name}: {str(e)}")
+            return None
+
 
 # Global storage service instance
 storage_service = StorageService()
