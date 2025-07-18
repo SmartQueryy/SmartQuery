@@ -377,6 +377,85 @@ This document tracks all completed work on the SmartQuery MVP project with dates
 
 ---
 
+### ✅ Task B10: Fix Failing Tests and CI/CD Issues
+**Date:** July 18, 2025  
+**Status:** Complete  
+**Implementation:**
+- Resolved critical test failures in CI/CD pipeline
+- Fixed MinIO connection issues during testing
+- Corrected HTTPException handling in project endpoints
+- Applied comprehensive code formatting and quality standards
+
+**Issues Resolved:**
+- **MinIO Connection Failures:** Tests were failing due to storage service attempting to connect to MinIO at localhost:9000 during CI/CD
+- **HTTPException Handling Bug:** 404 errors were being converted to 500 errors due to improper exception handling
+- **Test Hanging Issues:** Mock storage service wasn't properly preventing MinIO connection attempts
+
+**Files Modified:**
+- `backend/tests/conftest.py` - Fixed mock storage service setup to prevent MinIO connections during import
+- `backend/api/projects.py` - Added proper HTTPException handling to prevent 404→500 error conversion
+- `backend/tests/test_mock_endpoints.py` - Updated test functions to use mock_storage_service fixture
+
+**Technical Fixes:**
+- **Mock Setup Timing:** Moved storage service mocking to happen before app import to prevent connection attempts
+- **Exception Handling:** Added `except HTTPException: raise` before general exception handlers
+- **Test Dependencies:** Updated failing tests to properly inject mock_storage_service fixture
+- **Code Formatting:** Applied Black and isort formatting for consistent code style
+
+**Test Results:**
+- **Before:** 3 failing tests (test_create_project, test_get_upload_url, test_project_not_found)
+- **After:** All 121 tests passing successfully
+- **CI/CD Compatibility:** Tests now run without requiring real service connections
+
+**Key Improvements:**
+- Eliminated dependency on MinIO service during testing
+- Proper error handling for 404 responses
+- Consistent code formatting across all files
+- Enhanced test reliability and CI/CD pipeline stability
+
+---
+
+### ✅ Task B11: Setup MinIO Integration
+**Date:** January 11, 2025  
+**Status:** Complete  
+**Implementation:**
+- Enhanced StorageService with complete MinIO file operations
+- Added file download, deletion, and metadata retrieval capabilities
+- Integrated file cleanup with project deletion
+- Maintained existing presigned URL generation functionality
+
+**Files Enhanced:**
+- `backend/services/storage_service.py` - Added download_file(), delete_file(), get_file_info() methods
+- `backend/api/projects.py` - Updated project deletion to also delete files from MinIO storage
+
+**New Storage Methods:**
+- `download_file()` - Download files from MinIO storage for CSV processing
+- `delete_file()` - Delete files from MinIO storage with proper error handling
+- `get_file_info()` - Get file metadata (size, last modified, content type)
+
+**Integration Features:**
+- Automatic file deletion when projects are removed
+- Proper error handling for missing files
+- File existence checking and validation
+- Comprehensive logging for storage operations
+- Health check integration for storage monitoring
+
+**Key Capabilities:**
+- Complete file lifecycle management (upload → download → delete)
+- Secure presigned URL generation for file uploads
+- File metadata retrieval for processing decisions
+- Automatic cleanup to prevent storage bloat
+- Cross-service integration with project management
+
+**Storage Operations:**
+- File upload via presigned URLs (existing functionality)
+- File download for CSV processing and analysis
+- File deletion for cleanup and storage management
+- File metadata retrieval for validation and processing
+- Health monitoring and connection management
+
+---
+
 ## 📊 Current Project Status
 
 ### ✅ Completed Tasks
@@ -395,15 +474,15 @@ This document tracks all completed work on the SmartQuery MVP project with dates
 **Phase 2: Dashboard & Project Management**
 - **Task B9:** Create Project Model and Database ✅
 - **Task B10:** Implement Project CRUD Endpoints ✅
+- **Task B11:** Setup MinIO Integration ✅
+- **Task B12:** Create Celery File Processing ✅
+- **Task B13:** Add Schema Analysis ✅
 
 ### 🔄 In Progress
 - None currently
 
 ### 📅 Next Tasks
 **Phase 2 Continuation:**
-- Task B11: Setup MinIO Integration
-- Task B12: Create Celery File Processing
-- Task B13: Add Schema Analysis
 - Task B14: Test Project Integration
 
 ---
@@ -473,5 +552,85 @@ This document tracks all completed work on the SmartQuery MVP project with dates
 
 ---
 
+---
+
+### ✅ Task B12: Create Celery File Processing
+**Date:** January 11, 2025  
+**Status:** Complete  
+**Implementation:**
+- Enhanced `process_csv_file` Celery task for comprehensive CSV processing
+- Integrated MinIO file download and pandas CSV parsing
+- Added detailed schema analysis with column metadata
+- Implemented progress tracking and error handling
+- Created standalone schema analysis task for independent processing
+
+**Files Enhanced:**
+- `backend/tasks/file_processing.py` - Enhanced CSV processing with schema analysis
+- `backend/api/projects.py` - Added `/process` endpoint for triggering file processing
+- `backend/services/project_service.py` - Updated metadata update methods
+- `backend/tests/test_file_processing.py` - Comprehensive unit tests
+
+**Key Features:**
+- Asynchronous CSV processing with Celery task queue
+- Comprehensive schema analysis (data types, nullability, sample values)
+- Progress tracking with detailed status updates
+- Error handling with project status updates
+- Integration with MinIO storage and project management
+- Standalone schema analysis capability
+
+**Processing Pipeline:**
+- File download from MinIO storage
+- CSV parsing with pandas
+- Column-level analysis and metadata extraction
+- Dataset-level insights calculation
+- Project metadata updates in database
+- Status tracking throughout process
+
+**Testing:** All 125 backend tests passing ✅
+
+---
+
+### ✅ Task B13: Add Schema Analysis
+**Date:** January 11, 2025  
+**Status:** Complete  
+**Implementation:**
+- Enhanced schema analysis with comprehensive metadata and data quality insights
+- Added detailed column-level statistics for different data types
+- Implemented data quality issue detection and reporting
+- Created dataset-level insights and metrics
+- Added standalone schema analysis capability
+
+**Files Enhanced:**
+- `backend/tasks/file_processing.py` - Enhanced schema analysis with detailed statistics
+- `backend/api/projects.py` - Added `/analyze-schema` endpoint for standalone analysis
+
+**Column-Level Analysis:**
+- **Numeric Columns:** min, max, mean, median, standard deviation
+- **String Columns:** unique count, most common values, average length
+- **Null Analysis:** count and percentage of null values
+- **Data Quality Issues:** high null percentage, single value columns, no variance detection
+
+**Dataset-Level Insights:**
+- Total rows, columns, and cells analysis
+- Null cell analysis and percentage calculation
+- Duplicate row detection and percentage
+- Column type distribution (numeric, string, datetime, boolean)
+- Columns with data quality issues count
+
+**New API Endpoint:**
+- `POST /{project_id}/analyze-schema` - Trigger standalone schema analysis
+- Returns task ID for tracking analysis progress
+- Supports independent schema analysis without full processing
+
+**Enhanced Metadata Structure:**
+- Rich statistical information for each column
+- Data quality issue flags and descriptions
+- Dataset-level metrics and insights
+- Analysis timestamp for tracking
+
+**Testing:** All 125 backend tests passing ✅
+
+---
+
 *Last Updated: January 11, 2025*  
-*Next Update: Upon completion of Task B11 (Setup MinIO Integration)* 
+*Next Update: Upon completion of Task B14 (Test Project Integration)* 

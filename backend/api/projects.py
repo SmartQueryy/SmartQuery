@@ -19,7 +19,7 @@ from models.response_schemas import (
 )
 from services.project_service import get_project_service
 from services.storage_service import storage_service
-from tasks.file_processing import process_csv_file
+from tasks.file_processing import analyze_csv_schema, process_csv_file
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 project_service = get_project_service()
@@ -324,6 +324,55 @@ async def trigger_file_processing(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to start file processing: {str(e)}"
+        )
+
+
+@router.post("/{project_id}/analyze-schema")
+async def trigger_schema_analysis(
+    project_id: str, user_id: str = Depends(verify_token)
+) -> ApiResponse[Dict[str, str]]:
+    """Trigger standalone schema analysis for a project"""
+
+    try:
+        user_uuid = uuid.UUID(user_id)
+        project_uuid = uuid.UUID(project_id)
+
+        # Check if project exists and user owns it
+        if not project_service.check_project_ownership(project_uuid, user_uuid):
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Check if file exists in storage
+        object_name = f"{user_id}/{project_id}/data.csv"
+        if not storage_service.file_exists(object_name):
+            raise HTTPException(status_code=400, detail="No file uploaded for analysis")
+
+        # Download file content
+        file_content = storage_service.download_file(object_name)
+        if not file_content:
+            raise HTTPException(
+                status_code=400, detail="Failed to download file for analysis"
+            )
+
+        # Trigger standalone schema analysis task
+        task = analyze_csv_schema.delay(file_content, f"project_{project_id}_data.csv")
+
+        return ApiResponse(
+            success=True,
+            data={
+                "message": "Schema analysis started",
+                "task_id": task.id,
+                "project_id": project_id,
+            },
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid project ID: {str(e)}")
+    except HTTPException:
+        # Re-raise HTTPExceptions without wrapping them
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to start schema analysis: {str(e)}"
         )
 
 
