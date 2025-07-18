@@ -133,20 +133,19 @@ class ProjectService:
     def update_project_metadata(
         self,
         project_id: uuid.UUID,
-        csv_filename: str,
         row_count: int,
         column_count: int,
         columns_metadata: list,
+        status: ProjectStatusEnum = ProjectStatusEnum.READY,
     ) -> ProjectInDB:
         """Update project metadata after file processing"""
         return self.update_project(
             project_id,
             ProjectUpdate(
-                csv_filename=csv_filename,
                 row_count=row_count,
                 column_count=column_count,
                 columns_metadata=columns_metadata,
-                status=ProjectStatusEnum.READY,
+                status=status,
             ),
         )
 

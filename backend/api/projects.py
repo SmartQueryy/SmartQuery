@@ -19,6 +19,7 @@ from models.response_schemas import (
 )
 from services.project_service import get_project_service
 from services.storage_service import storage_service
+from tasks.file_processing import process_csv_file
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 project_service = get_project_service()
@@ -274,6 +275,55 @@ async def get_upload_url(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to generate upload URL: {str(e)}"
+        )
+
+
+@router.post("/{project_id}/process")
+async def trigger_file_processing(
+    project_id: str, user_id: str = Depends(verify_token)
+) -> ApiResponse[Dict[str, str]]:
+    """Trigger CSV file processing for a project"""
+
+    try:
+        user_uuid = uuid.UUID(user_id)
+        project_uuid = uuid.UUID(project_id)
+
+        # Check if project exists and user owns it
+        if not project_service.check_project_ownership(project_uuid, user_uuid):
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Get project to check current status
+        project_db = project_service.get_project_by_id(project_uuid)
+        if project_db.status == "ready":
+            raise HTTPException(status_code=400, detail="Project already processed")
+
+        # Check if file exists in storage
+        object_name = f"{user_id}/{project_id}/data.csv"
+        if not storage_service.file_exists(object_name):
+            raise HTTPException(
+                status_code=400, detail="No file uploaded for processing"
+            )
+
+        # Trigger Celery task
+        task = process_csv_file.delay(project_id, user_id)
+
+        return ApiResponse(
+            success=True,
+            data={
+                "message": "File processing started",
+                "task_id": task.id,
+                "project_id": project_id,
+            },
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid project ID: {str(e)}")
+    except HTTPException:
+        # Re-raise HTTPExceptions without wrapping them
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to start file processing: {str(e)}"
         )
 
 
