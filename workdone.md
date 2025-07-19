@@ -554,79 +554,40 @@ This document tracks all completed work on the SmartQuery MVP project with dates
 
 ---
 
-### ✅ Task B12: Create Celery File Processing
-**Date:** January 11, 2025  
-**Status:** Complete  
+### ✅ Task B12 & B13: Comprehensive File Processing & Schema Analysis
+**Date:** July 18, 2025
+**Status:** Complete
 **Implementation:**
-- Enhanced `process_csv_file` Celery task for comprehensive CSV processing
-- Integrated MinIO file download and pandas CSV parsing
-- Added detailed schema analysis with column metadata
-- Implemented progress tracking and error handling
-- Created standalone schema analysis task for independent processing
+- Developed a comprehensive Celery task for asynchronous CSV processing, including MinIO integration, pandas parsing, and detailed schema analysis.
+- Implemented robust progress tracking, error handling, and project status updates throughout the processing pipeline.
+- Created a standalone schema analysis endpoint for independent processing, providing flexibility for targeted data insights.
 
 **Files Enhanced:**
-- `backend/tasks/file_processing.py` - Enhanced CSV processing with schema analysis
-- `backend/api/projects.py` - Added `/process` endpoint for triggering file processing
-- `backend/services/project_service.py` - Updated metadata update methods
-- `backend/tests/test_file_processing.py` - Comprehensive unit tests
+- `backend/tasks/file_processing.py`: Enhanced CSV processing with detailed statistics and data quality insights.
+- `backend/api/projects.py`: Added `/process` and `/analyze-schema` endpoints for triggering file processing and standalone analysis.
+- `backend/services/project_service.py`: Updated metadata update methods to support schema analysis results.
+- `backend/tests/test_file_processing.py`: Added comprehensive unit tests for the new processing and analysis features.
 
 **Key Features:**
-- Asynchronous CSV processing with Celery task queue
-- Comprehensive schema analysis (data types, nullability, sample values)
-- Progress tracking with detailed status updates
-- Error handling with project status updates
-- Integration with MinIO storage and project management
-- Standalone schema analysis capability
+- **Asynchronous Processing:** Utilizes Celery for non-blocking CSV processing and schema analysis.
+- **Comprehensive Schema Analysis:** Provides detailed column-level statistics (for numeric and string data), null value analysis, and data quality issue detection.
+- **Dataset-Level Insights:** Calculates total rows, columns, null cell percentages, duplicate row detection, and column type distribution.
+- **Standalone Analysis:** Offers a dedicated API endpoint (`/analyze-schema`) for on-demand schema analysis without full data processing.
+- **Robust Error Handling:** Ensures that processing failures are gracefully handled and project statuses are updated accordingly.
 
 **Processing Pipeline:**
-- File download from MinIO storage
-- CSV parsing with pandas
-- Column-level analysis and metadata extraction
-- Dataset-level insights calculation
-- Project metadata updates in database
-- Status tracking throughout process
-
-**Testing:** All 125 backend tests passing ✅
-
----
-
-### ✅ Task B13: Add Schema Analysis
-**Date:** January 11, 2025  
-**Status:** Complete  
-**Implementation:**
-- Enhanced schema analysis with comprehensive metadata and data quality insights
-- Added detailed column-level statistics for different data types
-- Implemented data quality issue detection and reporting
-- Created dataset-level insights and metrics
-- Added standalone schema analysis capability
-
-**Files Enhanced:**
-- `backend/tasks/file_processing.py` - Enhanced schema analysis with detailed statistics
-- `backend/api/projects.py` - Added `/analyze-schema` endpoint for standalone analysis
-
-**Column-Level Analysis:**
-- **Numeric Columns:** min, max, mean, median, standard deviation
-- **String Columns:** unique count, most common values, average length
-- **Null Analysis:** count and percentage of null values
-- **Data Quality Issues:** high null percentage, single value columns, no variance detection
-
-**Dataset-Level Insights:**
-- Total rows, columns, and cells analysis
-- Null cell analysis and percentage calculation
-- Duplicate row detection and percentage
-- Column type distribution (numeric, string, datetime, boolean)
-- Columns with data quality issues count
-
-**New API Endpoint:**
-- `POST /{project_id}/analyze-schema` - Trigger standalone schema analysis
-- Returns task ID for tracking analysis progress
-- Supports independent schema analysis without full processing
+1.  File download from MinIO storage.
+2.  CSV parsing with pandas.
+3.  Column-level analysis and metadata extraction.
+4.  Dataset-level insights calculation.
+5.  Project metadata updates in the database.
+6.  Continuous status tracking throughout the process.
 
 **Enhanced Metadata Structure:**
-- Rich statistical information for each column
-- Data quality issue flags and descriptions
-- Dataset-level metrics and insights
-- Analysis timestamp for tracking
+- Stores rich statistical information for each column.
+- Includes data quality issue flags and descriptions.
+- Provides dataset-level metrics and insights.
+- Timestamps the analysis for versioning and tracking.
 
 **Testing:** All 125 backend tests passing ✅
 
