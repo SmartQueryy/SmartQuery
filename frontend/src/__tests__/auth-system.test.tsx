@@ -195,7 +195,6 @@ describe('Authentication System', () => {
 
   describe('Navigation', () => {
     it('should have router methods', () => {
-      const { useRouter } = require('next/navigation');
       // Mock the router since we can't use hooks outside components
       const mockRouter = {
         push: vi.fn(),
@@ -213,7 +212,6 @@ describe('Authentication System', () => {
     });
 
     it('should have search params', () => {
-      const { useSearchParams } = require('next/navigation');
       // Mock the search params since we can't use hooks outside components
       const mockSearchParams = new URLSearchParams();
       
