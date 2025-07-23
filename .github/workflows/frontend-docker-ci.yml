@@ -1,0 +1,29 @@
+name: Frontend Docker CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  frontend-docker:
+    name: Frontend Docker Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: docker build -t smartquery-frontend ./frontend
+
+      - name: Run lint in Docker
+        run: docker run --rm smartquery-frontend npm run lint
+
+      - name: Run tests in Docker
+        run: docker run --rm smartquery-frontend npm run test
+
+      - name: Run build in Docker
+        run: docker run --rm smartquery-frontend npm run build
