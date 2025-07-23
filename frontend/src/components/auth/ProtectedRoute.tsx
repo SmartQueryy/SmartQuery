@@ -8,7 +8,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation.js';
 import { useAuth } from './AuthProvider';
 
 interface ProtectedRouteProps {

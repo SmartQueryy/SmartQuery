@@ -8,8 +8,8 @@
 "use client";
 
 import React, { useEffect, Suspense } from "react";
-import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image.js";
+import { useRouter, useSearchParams } from "next/navigation.js";
 import { GoogleLoginButton } from '@/components/auth/LoginButton';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { CloudArrowUpIcon, ChatBubbleLeftRightIcon, MagnifyingGlassIcon, ChartBarIcon, ShieldCheckIcon, TableCellsIcon } from "@heroicons/react/24/outline";
