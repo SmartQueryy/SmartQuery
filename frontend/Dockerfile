@@ -19,8 +19,8 @@ RUN npm install --save-dev --arch=x64 --platform=linux --libc=musl rollup
 
 WORKDIR /app/frontend
 
-# Run lint and build (tests run in CI/CD, not during image build)
-RUN npm run lint && npm run build
+# Run build only (lint and tests run in CI/CD, not during image build)
+RUN npm run build
 
 EXPOSE 3000
 CMD ["npm", "start"] 
