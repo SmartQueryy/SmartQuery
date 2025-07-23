@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartQuery – Coming Soon</title>
+  <link rel="icon" href="/frontend/public/smartquery-logo.svg">
+  <link rel="stylesheet" href="style.css">
+  <meta name="description" content="SmartQuery: Transform your CSV data into insights with natural language queries. Coming soon!">
+</head>
+<body>
+  <div class="background-gradient"></div>
+  <main class="center-container">
+    <section class="card">
+      <div class="logo-title">
+        <img src="/frontend/public/smartquery-logo.svg" alt="SmartQuery Logo" class="logo">
+        <h1 class="project-name">SmartQuery</h1>
+      </div>
+      <h2 class="tagline">Query your data, naturally.</h2>
+      <p class="subtitle">Upload CSV files and analyze them in plain English. Get instant answers, charts, and insights! All with no SQL or coding required.</p>
+      <div class="under-construction">
+        <span class="uc-icon" aria-label="construction">🚧</span>
+        <span class="uc-text">We're working hard to bring you an amazing experience. SmartQuery will be available soon!</span>
+      </div>
+      <div class="features">
+        <h3>What you'll be able to do:</h3>
+        <ul>
+          <li><span class="icon">📤</span> Upload CSVs Instantly</li>
+          <li><span class="icon">💬</span> Ask Data Questions</li>
+          <li><span class="icon">🤖</span> AI-Powered Insights</li>
+          <li><span class="icon">📊</span> Visualize Results</li>
+          <li><span class="icon">🔒</span> Secure & Private</li>
+          <li><span class="icon">🧮</span> No SQL Needed</li>
+        </ul>
+      </div>
+      <div class="soc2-note">
+        <span>SmartQuery will be <strong>SOC2 compliant</strong> to ensure the highest standards of security and privacy for your sensitive data.</span>
+      </div>
+      <form class="waitlist-form" id="waitlistForm" autocomplete="off">
+        <label for="waitlistEmail" class="waitlist-label">Join the waitlist:</label>
+        <div class="waitlist-row">
+          <input type="email" id="waitlistEmail" name="email" class="waitlist-input" placeholder="Your email address" required />
+          <button type="submit" class="waitlist-btn">Notify Me</button>
+        </div>
+        <div class="waitlist-success" id="waitlistSuccess" style="display:none;">Thank you! You'll be the first to know when we launch 🚀</div>
+      </form>
+      <div class="credits">
+        <span>Built by </span>
+        <a href="https://github.com/1300Sarthak" target="_blank" rel="noopener">Sarthak Sethi</a>
+        <span>&amp;</span>
+        <a href="https://github.com/tanzilahmed0" target="_blank" rel="noopener">Tanzil Ahmed</a>
+      </div>
+    </section>
+  </main>
+  <footer class="footer">&copy; 2024 SmartQuery. All rights reserved.</footer>
+  <script>
+    document.getElementById('waitlistForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      document.getElementById('waitlistEmail').style.display = 'none';
+      document.querySelector('.waitlist-btn').style.display = 'none';
+      document.getElementById('waitlistSuccess').style.display = 'block';
+    });
+  </script>
+</body>
+</html> 
