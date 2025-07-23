@@ -95,7 +95,7 @@ function LoginPageContent() {
         )}
         {/* Login Card */}
         <div className="w-full bg-white dark:bg-gray-950 py-8 px-6 shadow-xl rounded-2xl flex flex-col gap-6">
-          <GoogleLoginButton size="lg" redirectTo="/dashboard" className="w-full" hideIcon={false} />
+          <GoogleLoginButton size="lg" redirectTo="/dashboard" className="w-full" showIcon={true} />
           {/* Dev Login Button for testing */}
           <button
             onClick={handleDevLogin}

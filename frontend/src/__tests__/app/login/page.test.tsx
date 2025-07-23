@@ -157,7 +157,10 @@ describe('Login Page', () => {
 
       expect(window.location.href).toBe('http://localhost:8000/auth/google');
 
-      window.location = originalLocation;
+      Object.defineProperty(window, 'location', {
+        value: originalLocation,
+        writable: true,
+      });
     });
 
     it('should handle alternative login button clicks', () => {
@@ -172,7 +175,10 @@ describe('Login Page', () => {
 
       expect(window.location.href).toBe('http://localhost:8000/auth/google');
 
-      window.location = originalLocation;
+      Object.defineProperty(window, 'location', {
+        value: originalLocation,
+        writable: true,
+      });
     });
   });
 

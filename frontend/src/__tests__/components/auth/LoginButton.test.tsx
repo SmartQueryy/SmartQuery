@@ -133,7 +133,7 @@ describe('LoginButton', () => {
 
       expect(window.location.href).toBe('http://localhost:8000/auth/google');
       
-      window.location = originalLocation;
+      Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
     });
 
     it('should show loading state during redirect', () => {
@@ -171,7 +171,7 @@ describe('LoginButton', () => {
 
       expect(mockSetError).toHaveBeenCalledWith('Failed to start login process');
       
-      window.location = originalLocation;
+      Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
     });
   });
 
@@ -304,6 +304,6 @@ describe('GoogleLoginButton', () => {
 
     expect(window.location.href).toBe('http://localhost:8000/auth/google');
     
-    window.location = originalLocation;
+    Object.defineProperty(window, 'location', { value: originalLocation, writable: true });
   });
 }); 
