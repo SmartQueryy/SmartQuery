@@ -15,8 +15,8 @@ RUN npm ci
 
 WORKDIR /app/frontend
 
-# Run lint, test, and build as part of the image build
-RUN npm run lint && npm run test && npm run build
+# Run lint and build (tests run in CI/CD, not during image build)
+RUN npm run lint && npm run build
 
 EXPOSE 3000
 CMD ["npm", "start"] 
