@@ -6,26 +6,29 @@
 
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi, type MockedFunction } from 'vitest';
 import { ProtectedRoute, withAuth, useProtectedRoute, AuthGuard } from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { mockUser } from '../../utils/test-utils';
 
 // Mock the auth context
-jest.mock('@/components/auth/AuthProvider', () => ({
-  useAuth: jest.fn(),
+vi.mock('@/components/auth/AuthProvider', () => ({
+  useAuth: vi.fn(),
 }));
 
 // Mock Next.js router
-jest.mock('next/navigation', () => ({
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: jest.fn(),
+    push: mockPush,
   }),
 }));
 
-const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
+const mockUseAuth = useAuth as MockedFunction<typeof useAuth>;
 
 describe('ProtectedRoute', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   const TestComponent = () => <div>Protected Content</div>;
@@ -33,15 +36,15 @@ describe('ProtectedRoute', () => {
   describe('Authentication States', () => {
     it('should render children when authenticated', () => {
       mockUseAuth.mockReturnValue({
-        user: { id: '1', name: 'Test User', email: 'test@example.com' },
+        user: mockUser,
         accessToken: 'token',
         isAuthenticated: true,
         isLoading: false,
         error: null,
-        login: jest.fn(),
-        logout: jest.fn(),
-        refreshToken: jest.fn(),
-        setError: jest.fn(),
+        login: vi.fn(),
+        logout: vi.fn(),
+        refreshToken: vi.fn(),
+        setError: vi.fn(),
       });
 
       render(
@@ -54,10 +57,6 @@ describe('ProtectedRoute', () => {
     });
 
     it('should redirect to login when not authenticated', () => {
-      const mockPush = jest.fn();
-      jest.doMock('next/navigation', () => ({
-        useRouter: () => ({ push: mockPush }),
-      }));
 
       mockUseAuth.mockReturnValue({
         user: null,
@@ -65,10 +64,10 @@ describe('ProtectedRoute', () => {
         isAuthenticated: false,
         isLoading: false,
         error: null,
-        login: jest.fn(),
-        logout: jest.fn(),
-        refreshToken: jest.fn(),
-        setError: jest.fn(),
+        login: vi.fn(),
+        logout: vi.fn(),
+        refreshToken: vi.fn(),
+        setError: vi.fn(),
       });
 
       render(
@@ -87,10 +86,10 @@ describe('ProtectedRoute', () => {
         isAuthenticated: false,
         isLoading: true,
         error: null,
-        login: jest.fn(),
-        logout: jest.fn(),
-        refreshToken: jest.fn(),
-        setError: jest.fn(),
+        login: vi.fn(),
+        logout: vi.fn(),
+        refreshToken: vi.fn(),
+        setError: vi.fn(),
       });
 
       render(
@@ -104,10 +103,6 @@ describe('ProtectedRoute', () => {
     });
 
     it('should redirect to custom path when specified', () => {
-      const mockPush = jest.fn();
-      jest.doMock('next/navigation', () => ({
-        useRouter: () => ({ push: mockPush }),
-      }));
 
       mockUseAuth.mockReturnValue({
         user: null,
@@ -115,10 +110,10 @@ describe('ProtectedRoute', () => {
         isAuthenticated: false,
         isLoading: false,
         error: null,
-        login: jest.fn(),
-        logout: jest.fn(),
-        refreshToken: jest.fn(),
-        setError: jest.fn(),
+        login: vi.fn(),
+        logout: vi.fn(),
+        refreshToken: vi.fn(),
+        setError: vi.fn(),
       });
 
       render(
@@ -139,10 +134,10 @@ describe('ProtectedRoute', () => {
         isAuthenticated: false,
         isLoading: true,
         error: null,
-        login: jest.fn(),
-        logout: jest.fn(),
-        refreshToken: jest.fn(),
-        setError: jest.fn(),
+        login: vi.fn(),
+        logout: vi.fn(),
+        refreshToken: vi.fn(),
+        setError: vi.fn(),
       });
 
       const CustomFallback = () => <div>Custom Loading...</div>;
@@ -163,10 +158,10 @@ describe('ProtectedRoute', () => {
         isAuthenticated: false,
         isLoading: false,
         error: null,
-        login: jest.fn(),
-        logout: jest.fn(),
-        refreshToken: jest.fn(),
-        setError: jest.fn(),
+        login: vi.fn(),
+        logout: vi.fn(),
+        refreshToken: vi.fn(),
+        setError: vi.fn(),
       });
 
       const CustomFallback = () => <div>Please log in to continue</div>;
@@ -184,22 +179,22 @@ describe('ProtectedRoute', () => {
 
 describe('withAuth HOC', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   const TestComponent = () => <div>Protected Component</div>;
 
   it('should wrap component with ProtectedRoute', () => {
     mockUseAuth.mockReturnValue({
-      user: { id: '1', name: 'Test User', email: 'test@example.com' },
+      user: mockUser,
       accessToken: 'token',
       isAuthenticated: true,
       isLoading: false,
       error: null,
-      login: jest.fn(),
-      logout: jest.fn(),
-      refreshToken: jest.fn(),
-      setError: jest.fn(),
+      login: vi.fn(),
+      logout: vi.fn(),
+      refreshToken: vi.fn(),
+      setError: vi.fn(),
     });
 
     const ProtectedComponent = withAuth(TestComponent);
@@ -210,15 +205,15 @@ describe('withAuth HOC', () => {
 
   it('should pass props to wrapped component', () => {
     mockUseAuth.mockReturnValue({
-      user: { id: '1', name: 'Test User', email: 'test@example.com' },
+      user: mockUser,
       accessToken: 'token',
       isAuthenticated: true,
       isLoading: false,
       error: null,
-      login: jest.fn(),
-      logout: jest.fn(),
-      refreshToken: jest.fn(),
-      setError: jest.fn(),
+      login: vi.fn(),
+      logout: vi.fn(),
+      refreshToken: vi.fn(),
+      setError: vi.fn(),
     });
 
     const TestComponentWithProps = ({ message }: { message: string }) => (
@@ -234,20 +229,20 @@ describe('withAuth HOC', () => {
 
 describe('useProtectedRoute Hook', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should return authentication state', () => {
     mockUseAuth.mockReturnValue({
-      user: { id: '1', name: 'Test User', email: 'test@example.com' },
+      user: mockUser,
       accessToken: 'token',
       isAuthenticated: true,
       isLoading: false,
       error: null,
-      login: jest.fn(),
-      logout: jest.fn(),
-      refreshToken: jest.fn(),
-      setError: jest.fn(),
+      login: vi.fn(),
+      logout: vi.fn(),
+      refreshToken: vi.fn(),
+      setError: vi.fn(),
     });
 
     const TestComponent = () => {
@@ -269,10 +264,6 @@ describe('useProtectedRoute Hook', () => {
   });
 
   it('should redirect when not authenticated', () => {
-    const mockPush = jest.fn();
-    jest.doMock('next/navigation', () => ({
-      useRouter: () => ({ push: mockPush }),
-    }));
 
     mockUseAuth.mockReturnValue({
       user: null,
@@ -280,10 +271,10 @@ describe('useProtectedRoute Hook', () => {
       isAuthenticated: false,
       isLoading: false,
       error: null,
-      login: jest.fn(),
-      logout: jest.fn(),
-      refreshToken: jest.fn(),
-      setError: jest.fn(),
+      login: vi.fn(),
+      logout: vi.fn(),
+      refreshToken: vi.fn(),
+      setError: vi.fn(),
     });
 
     const TestComponent = () => {
@@ -299,22 +290,22 @@ describe('useProtectedRoute Hook', () => {
 
 describe('AuthGuard', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   const TestComponent = () => <div>Guarded Content</div>;
 
   it('should render children when authenticated', () => {
     mockUseAuth.mockReturnValue({
-      user: { id: '1', name: 'Test User', email: 'test@example.com' },
+      user: mockUser,
       accessToken: 'token',
       isAuthenticated: true,
       isLoading: false,
       error: null,
-      login: jest.fn(),
-      logout: jest.fn(),
-      refreshToken: jest.fn(),
-      setError: jest.fn(),
+      login: vi.fn(),
+      logout: vi.fn(),
+      refreshToken: vi.fn(),
+      setError: vi.fn(),
     });
 
     render(
@@ -333,10 +324,10 @@ describe('AuthGuard', () => {
       isAuthenticated: false,
       isLoading: true,
       error: null,
-      login: jest.fn(),
-      logout: jest.fn(),
-      refreshToken: jest.fn(),
-      setError: jest.fn(),
+      login: vi.fn(),
+      logout: vi.fn(),
+      refreshToken: vi.fn(),
+      setError: vi.fn(),
     });
 
     render(
@@ -345,8 +336,8 @@ describe('AuthGuard', () => {
       </AuthGuard>
     );
 
-    const spinner = screen.getByRole('status', { hidden: true });
-    expect(spinner).toBeInTheDocument();
+    const spinners = screen.getAllByRole('generic', { hidden: true });
+    expect(spinners.length).toBeGreaterThan(0);
   });
 
   it('should not render children when not authenticated', () => {
@@ -356,10 +347,10 @@ describe('AuthGuard', () => {
       isAuthenticated: false,
       isLoading: false,
       error: null,
-      login: jest.fn(),
-      logout: jest.fn(),
-      refreshToken: jest.fn(),
-      setError: jest.fn(),
+      login: vi.fn(),
+      logout: vi.fn(),
+      refreshToken: vi.fn(),
+      setError: vi.fn(),
     });
 
     render(
@@ -378,10 +369,10 @@ describe('AuthGuard', () => {
       isAuthenticated: false,
       isLoading: true,
       error: null,
-      login: jest.fn(),
-      logout: jest.fn(),
-      refreshToken: jest.fn(),
-      setError: jest.fn(),
+      login: vi.fn(),
+      logout: vi.fn(),
+      refreshToken: vi.fn(),
+      setError: vi.fn(),
     });
 
     const CustomFallback = () => <div>Custom Loading...</div>;

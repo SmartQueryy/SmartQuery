@@ -6,6 +6,9 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './vitest.setup.ts',
+    env: {
+      NEXT_PUBLIC_API_URL: 'http://localhost:8000',
+    },
   },
   resolve: {
     alias: {

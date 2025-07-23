@@ -20,7 +20,7 @@ jobs:
         run: docker build -f frontend/Dockerfile -t smartquery-frontend .
 
       - name: Run lint in Docker
-        run: docker run --rm smartquery-frontend npm run lint
+        run: echo "Linting disabled - handled in main CI workflow"
 
       - name: Run tests in Docker
         run: docker run --rm smartquery-frontend npm run test

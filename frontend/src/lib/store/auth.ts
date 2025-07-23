@@ -6,191 +6,148 @@
  */
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import type { User } from '../types';
-import { TokenManager, UserManager } from '../auth';
+import type { User } from '@/lib/types';
+import { TokenManager, UserManager } from '@/lib/auth';
 
-interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: number;
-}
-
-export interface AuthState {
-  // State
+interface AuthState {
   user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-
+  
   // Actions
   setTokens: (accessToken: string, refreshToken: string, expiresIn: number) => void;
   setUser: (user: User) => void;
   clearTokens: () => void;
   clearUser: () => void;
-  setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  setLoading: (loading: boolean) => void;
   loadSession: () => void;
   logout: () => void;
+  login: (user: User, tokens: { accessToken: string; refreshToken: string; expiresAt: number }) => void;
 }
 
-/**
- * Create the authentication store with persistence
- */
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      // Initial state
-      user: null,
+export const useAuthStore = create<AuthState>((set, get) => ({
+  user: null,
+  accessToken: null,
+  refreshToken: null,
+  isAuthenticated: false,
+  isLoading: true,
+  error: null,
+
+  setTokens: (accessToken, refreshToken, expiresIn) => {
+    TokenManager.setTokens(accessToken, refreshToken, expiresIn);
+    set({
+      accessToken,
+      refreshToken,
+      isAuthenticated: true,
+      error: null,
+    });
+  },
+
+  setUser: (user) => {
+    UserManager.setUser(user);
+    set({
+      user,
+      isAuthenticated: true,
+      error: null,
+    });
+  },
+
+  clearTokens: () => {
+    TokenManager.clearTokens();
+    set({
       accessToken: null,
       refreshToken: null,
       isAuthenticated: false,
-      isLoading: true,
-      error: null,
+    });
+  },
 
-      // Actions
-      setTokens: (accessToken: string, refreshToken: string, expiresIn: number) => {
-        // Store tokens in both Zustand state and localStorage
-        TokenManager.setTokens(accessToken, refreshToken, expiresIn);
-        
+  clearUser: () => {
+    UserManager.clearUser();
+    set({
+      user: null,
+      isAuthenticated: false,
+    });
+  },
+
+  setError: (error) => {
+    set({ error });
+  },
+
+  setLoading: (isLoading) => {
+    set({ isLoading });
+  },
+
+  loadSession: () => {
+    try {
+      set({ isLoading: true });
+      
+      const accessToken = TokenManager.getAccessToken();
+      const refreshToken = TokenManager.getRefreshToken();
+      const user = UserManager.getUser();
+      
+      if (accessToken && refreshToken && user) {
         set({
           accessToken,
           refreshToken,
-          isAuthenticated: true,
-          error: null,
-        });
-      },
-
-      setUser: (user: User) => {
-        // Store user in both Zustand state and localStorage
-        UserManager.setUser(user);
-        
-        set({
           user,
           isAuthenticated: true,
+          isLoading: false,
           error: null,
         });
-      },
-
-      clearTokens: () => {
-        // Clear tokens from both Zustand state and localStorage
-        TokenManager.clearTokens();
-        
+      } else {
         set({
           accessToken: null,
           refreshToken: null,
-          isAuthenticated: false,
-        });
-      },
-
-      clearUser: () => {
-        // Clear user from both Zustand state and localStorage
-        UserManager.clearUser();
-        
-        set({
           user: null,
           isAuthenticated: false,
+          isLoading: false,
+          error: null,
         });
-      },
-
-      setLoading: (loading: boolean) => {
-        set({ isLoading: loading });
-      },
-
-      setError: (error: string | null) => {
-        set({ error });
-      },
-
-      loadSession: () => {
-        const { setLoading, setError } = get();
-        
-        try {
-          setLoading(true);
-          setError(null);
-
-          // Check if we have valid tokens
-          const hasValidTokens = TokenManager.hasValidTokens();
-          
-          if (hasValidTokens) {
-            // Load tokens from localStorage
-            const accessToken = TokenManager.getAccessToken();
-            const refreshToken = TokenManager.getRefreshToken();
-            
-            // Load user from localStorage
-            const user = UserManager.getUser();
-            
-            if (accessToken && refreshToken && user) {
-              set({
-                accessToken,
-                refreshToken,
-                user,
-                isAuthenticated: true,
-                isLoading: false,
-                error: null,
-              });
-              return;
-            }
-          }
-
-          // No valid session found
-          set({
-            user: null,
-            accessToken: null,
-            refreshToken: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: null,
-          });
-        } catch (error) {
-          console.error('Error loading session:', error);
-          setError('Failed to load session');
-          set({
-            user: null,
-            accessToken: null,
-            refreshToken: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
-        }
-      },
-
-      logout: () => {
-        const { clearTokens, clearUser, setError } = get();
-        
-        try {
-          // Clear all authentication data
-          clearTokens();
-          clearUser();
-          setError(null);
-          
-          set({
-            user: null,
-            accessToken: null,
-            refreshToken: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: null,
-          });
-        } catch (error) {
-          console.error('Error during logout:', error);
-          setError('Failed to logout properly');
-        }
-      },
-    }),
-    {
-      name: 'smartquery-auth', // localStorage key
-      partialize: (state) => ({
-        // Only persist these fields to localStorage
-        user: state.user,
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
-        isAuthenticated: state.isAuthenticated,
-      }),
+      }
+    } catch (error) {
+      set({ 
+        error: 'Failed to load session',
+        isLoading: false 
+      });
     }
-  )
-);
+  },
+
+  logout: () => {
+    try {
+      TokenManager.clearTokens();
+      UserManager.clearUser();
+      set({
+        user: null,
+        accessToken: null,
+        refreshToken: null,
+        isAuthenticated: false,
+        error: null,
+      });
+    } catch (error) {
+      set({ error: 'Failed to logout properly' });
+    }
+  },
+
+  login: (user: User, tokens: { accessToken: string; refreshToken: string; expiresAt: number }) => {
+    try {
+      TokenManager.setTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresAt - Date.now());
+      UserManager.setUser(user);
+      set({
+        user,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        isAuthenticated: true,
+        error: null,
+      });
+    } catch (error) {
+      set({ error: 'Failed to complete login' });
+    }
+  },
+}));
 
 /**
  * Convenience hooks for common auth operations
@@ -207,9 +164,8 @@ export const useAuth = () => {
     error: store.error,
     
     // Actions
-    login: (user: User, tokens: AuthTokens) => {
-      store.setUser(user);
-      store.setTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresAt - Date.now());
+    login: (user: User, tokens: { accessToken: string; refreshToken: string; expiresAt: number }) => {
+      store.login(user, tokens);
     },
     
     logout: store.logout,
