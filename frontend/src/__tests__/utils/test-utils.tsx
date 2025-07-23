@@ -11,33 +11,130 @@ import { AuthProvider } from '@/components/auth/AuthProvider';
 import type { User } from '@/lib/types';
 
 // Mock the API client
-vi.mock('@/lib/api', () => ({
-  api: {
-    auth: {
-      googleLogin: vi.fn(),
-      getCurrentUser: vi.fn(),
-      logout: vi.fn(),
-      refreshToken: vi.fn(),
-    },
-    projects: {
-      getProjects: vi.fn(),
-      createProject: vi.fn(),
-      getProject: vi.fn(),
-      deleteProject: vi.fn(),
-      getUploadUrl: vi.fn(),
-      getProjectStatus: vi.fn(),
-    },
-    chat: {
-      sendMessage: vi.fn(),
-      getMessages: vi.fn(),
-      getPreview: vi.fn(),
-      getSuggestions: vi.fn(),
-    },
-    system: {
-      healthCheck: vi.fn(),
-      systemStatus: vi.fn(),
-    },
+const mockApi = {
+  auth: {
+    googleLogin: vi.fn().mockResolvedValue({
+      success: true,
+      data: {
+        user: {
+          id: '1',
+          name: 'Test User',
+          email: 'test@example.com',
+          avatar_url: '',
+          created_at: '2024-01-01T00:00:00Z',
+          last_sign_in_at: '2024-01-01T12:00:00Z',
+        },
+        access_token: 'mock-access-token',
+        refresh_token: 'mock-refresh-token',
+        expires_in: 3600,
+      },
+    }),
+    getCurrentUser: vi.fn().mockResolvedValue({
+      success: true,
+      data: {
+        user: {
+          id: '1',
+          name: 'Test User',
+          email: 'test@example.com',
+          avatar_url: '',
+          created_at: '2024-01-01T00:00:00Z',
+          last_sign_in_at: '2024-01-01T12:00:00Z',
+        },
+      },
+    }),
+    logout: vi.fn().mockResolvedValue({ success: true }),
+    refreshToken: vi.fn().mockResolvedValue({
+      success: true,
+      data: {
+        access_token: 'new-access-token',
+        refresh_token: 'new-refresh-token',
+        expires_in: 3600,
+      },
+    }),
   },
+  projects: {
+    getProjects: vi.fn().mockResolvedValue({
+      success: true,
+      data: [
+        {
+          id: '1',
+          name: 'Test Project',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+      ],
+    }),
+    createProject: vi.fn().mockResolvedValue({
+      success: true,
+      data: {
+        id: '1',
+        name: 'Test Project',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      },
+    }),
+    getProject: vi.fn().mockResolvedValue({
+      success: true,
+      data: {
+        id: '1',
+        name: 'Test Project',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      },
+    }),
+    deleteProject: vi.fn().mockResolvedValue({ success: true }),
+    getUploadUrl: vi.fn().mockResolvedValue({
+      success: true,
+      data: { upload_url: 'https://example.com/upload' },
+    }),
+    getProjectStatus: vi.fn().mockResolvedValue({
+      success: true,
+      data: { status: 'completed' },
+    }),
+  },
+  chat: {
+    sendMessage: vi.fn().mockResolvedValue({
+      success: true,
+      data: {
+        message: 'Test response',
+        result_type: 'text',
+        result: 'Test result',
+      },
+    }),
+    getMessages: vi.fn().mockResolvedValue({
+      success: true,
+      data: [
+        {
+          id: '1',
+          message: 'Test message',
+          response: 'Test response',
+          created_at: '2024-01-01T00:00:00Z',
+        },
+      ],
+    }),
+    getPreview: vi.fn().mockResolvedValue({
+      success: true,
+      data: {
+        headers: ['col1', 'col2'],
+        rows: [['val1', 'val2']],
+      },
+    }),
+    getSuggestions: vi.fn().mockResolvedValue({
+      success: true,
+      data: ['suggestion1', 'suggestion2'],
+    }),
+  },
+  system: {
+    healthCheck: vi.fn().mockResolvedValue({ success: true }),
+    systemStatus: vi.fn().mockResolvedValue({
+      success: true,
+      data: { status: 'healthy' },
+    }),
+  },
+};
+
+vi.mock('@/lib/api', () => ({
+  api: mockApi,
 }));
 
 // Mock Next.js router

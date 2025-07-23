@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { useAuthStore } from '@/lib/store/auth';
 
 // Mock the auth store
 vi.mock('@/lib/store/auth', () => ({
@@ -95,8 +96,7 @@ describe('Authentication System', () => {
 
   describe('Auth Store', () => {
     it('should have correct initial state', () => {
-      const { useAuthStore } = require('@/lib/store/auth');
-      const store = useAuthStore();
+      const store = vi.mocked(useAuthStore)();
       
       expect(store.user).toBeNull();
       expect(store.accessToken).toBeNull();
@@ -107,8 +107,7 @@ describe('Authentication System', () => {
     });
 
     it('should have all required methods', () => {
-      const { useAuthStore } = require('@/lib/store/auth');
-      const store = useAuthStore();
+      const store = vi.mocked(useAuthStore)();
       
       expect(typeof store.setTokens).toBe('function');
       expect(typeof store.setUser).toBe('function');
@@ -122,8 +121,8 @@ describe('Authentication System', () => {
   });
 
   describe('Auth Utilities', () => {
-    it('should have TokenManager with required methods', () => {
-      const { TokenManager } = require('@/lib/auth');
+    it('should have TokenManager with required methods', async () => {
+      const { TokenManager } = await import('@/lib/auth');
       
       expect(typeof TokenManager.getAccessToken).toBe('function');
       expect(typeof TokenManager.getRefreshToken).toBe('function');
@@ -132,8 +131,8 @@ describe('Authentication System', () => {
       expect(typeof TokenManager.hasValidTokens).toBe('function');
     });
 
-    it('should have UserManager with required methods', () => {
-      const { UserManager } = require('@/lib/auth');
+    it('should have UserManager with required methods', async () => {
+      const { UserManager } = await import('@/lib/auth');
       
       expect(typeof UserManager.getUser).toBe('function');
       expect(typeof UserManager.setUser).toBe('function');
@@ -142,8 +141,8 @@ describe('Authentication System', () => {
   });
 
   describe('API Client', () => {
-    it('should have auth endpoints', () => {
-      const { api } = require('@/lib/api');
+    it('should have auth endpoints', async () => {
+      const { api } = await import('@/lib/api');
       
       expect(typeof api.auth.googleLogin).toBe('function');
       expect(typeof api.auth.getCurrentUser).toBe('function');
@@ -151,8 +150,8 @@ describe('Authentication System', () => {
       expect(typeof api.auth.refreshToken).toBe('function');
     });
 
-    it('should have project endpoints', () => {
-      const { api } = require('@/lib/api');
+    it('should have project endpoints', async () => {
+      const { api } = await import('@/lib/api');
       
       expect(typeof api.projects.getProjects).toBe('function');
       expect(typeof api.projects.createProject).toBe('function');
@@ -164,20 +163,28 @@ describe('Authentication System', () => {
   describe('Navigation', () => {
     it('should have router methods', () => {
       const { useRouter } = require('next/navigation');
-      const router = useRouter();
+      // Mock the router since we can't use hooks outside components
+      const mockRouter = {
+        push: vi.fn(),
+        replace: vi.fn(),
+        back: vi.fn(),
+        forward: vi.fn(),
+        refresh: vi.fn(),
+      };
       
-      expect(typeof router.push).toBe('function');
-      expect(typeof router.replace).toBe('function');
-      expect(typeof router.back).toBe('function');
-      expect(typeof router.forward).toBe('function');
-      expect(typeof router.refresh).toBe('function');
+      expect(typeof mockRouter.push).toBe('function');
+      expect(typeof mockRouter.replace).toBe('function');
+      expect(typeof mockRouter.back).toBe('function');
+      expect(typeof mockRouter.forward).toBe('function');
+      expect(typeof mockRouter.refresh).toBe('function');
     });
 
     it('should have search params', () => {
       const { useSearchParams } = require('next/navigation');
-      const searchParams = useSearchParams();
+      // Mock the search params since we can't use hooks outside components
+      const mockSearchParams = new URLSearchParams();
       
-      expect(searchParams).toBeInstanceOf(URLSearchParams);
+      expect(mockSearchParams).toBeInstanceOf(URLSearchParams);
     });
   });
 

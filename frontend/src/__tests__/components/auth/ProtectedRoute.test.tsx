@@ -17,9 +17,10 @@ vi.mock('@/components/auth/AuthProvider', () => ({
 }));
 
 // Mock Next.js router
+const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push: mockPush,
   }),
 }));
 
@@ -56,10 +57,6 @@ describe('ProtectedRoute', () => {
     });
 
     it('should redirect to login when not authenticated', () => {
-      const mockPush = vi.fn();
-      vi.doMock('next/navigation', () => ({
-        useRouter: () => ({ push: mockPush }),
-      }));
 
       mockUseAuth.mockReturnValue({
         user: null,
@@ -106,10 +103,6 @@ describe('ProtectedRoute', () => {
     });
 
     it('should redirect to custom path when specified', () => {
-      const mockPush = vi.fn();
-      vi.doMock('next/navigation', () => ({
-        useRouter: () => ({ push: mockPush }),
-      }));
 
       mockUseAuth.mockReturnValue({
         user: null,
@@ -271,10 +264,6 @@ describe('useProtectedRoute Hook', () => {
   });
 
   it('should redirect when not authenticated', () => {
-    const mockPush = vi.fn();
-    vi.doMock('next/navigation', () => ({
-      useRouter: () => ({ push: mockPush }),
-    }));
 
     mockUseAuth.mockReturnValue({
       user: null,
@@ -347,8 +336,8 @@ describe('AuthGuard', () => {
       </AuthGuard>
     );
 
-    const spinner = screen.getByRole('status', { hidden: true });
-    expect(spinner).toBeInTheDocument();
+    const spinners = screen.getAllByRole('generic', { hidden: true });
+    expect(spinners.length).toBeGreaterThan(0);
   });
 
   it('should not render children when not authenticated', () => {

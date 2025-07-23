@@ -31,118 +31,60 @@ const REFRESH_TOKEN_KEY = 'smartquery_refresh_token';
 const TOKEN_EXPIRY_KEY = 'smartquery_token_expiry';
 const USER_KEY = 'smartquery_user';
 
-/**
- * Token management utilities
- */
-export class TokenManager {
-  /**
-   * Get access token from storage
-   */
-  static getAccessToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(ACCESS_TOKEN_KEY);
-  }
-
-  /**
-   * Get refresh token from storage
-   */
-  static getRefreshToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(REFRESH_TOKEN_KEY);
-  }
-
-  /**
-   * Get token expiry time
-   */
-  static getTokenExpiry(): number | null {
-    if (typeof window === 'undefined') return null;
-    const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
+// Token management utilities
+export const TokenManager = {
+  getAccessToken: (): string | null => {
+    return localStorage.getItem('accessToken');
+  },
+  
+  getRefreshToken: (): string | null => {
+    return localStorage.getItem('refreshToken');
+  },
+  
+  getTokenExpiry: (): number | null => {
+    const expiry = localStorage.getItem('tokenExpiry');
     return expiry ? parseInt(expiry, 10) : null;
-  }
+  },
+  
+  setTokens: (accessToken: string, refreshToken: string, expiresIn: number): void => {
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
+    localStorage.setItem('tokenExpiry', (Date.now() + expiresIn * 1000).toString());
+  },
+  
+  clearTokens: (): void => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('tokenExpiry');
+  },
+  
+  isTokenExpired: (): boolean => {
+    const expiry = TokenManager.getTokenExpiry();
+    return expiry ? Date.now() > expiry : true;
+  },
+  
+  hasValidTokens: (): boolean => {
+    const accessToken = TokenManager.getAccessToken();
+    const refreshToken = TokenManager.getRefreshToken();
+    return !!(accessToken && refreshToken && !TokenManager.isTokenExpired());
+  },
+};
 
-  /**
-   * Set tokens in storage
-   */
-  static setTokens(accessToken: string, refreshToken: string, expiresIn: number): void {
-    if (typeof window === 'undefined') return;
-    
-    const expiresAt = Date.now() + expiresIn * 1000;
-    
-    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-    localStorage.setItem(TOKEN_EXPIRY_KEY, expiresAt.toString());
-  }
-
-  /**
-   * Clear all tokens from storage
-   */
-  static clearTokens(): void {
-    if (typeof window === 'undefined') return;
-    
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    localStorage.removeItem(TOKEN_EXPIRY_KEY);
-    localStorage.removeItem(USER_KEY);
-  }
-
-  /**
-   * Check if access token is expired
-   */
-  static isTokenExpired(): boolean {
-    const expiry = this.getTokenExpiry();
-    if (!expiry) return true;
-    
-    // Consider token expired if it expires within 30 seconds
-    return Date.now() >= (expiry - 30000);
-  }
-
-  /**
-   * Check if user has valid tokens
-   */
-  static hasValidTokens(): boolean {
-    const accessToken = this.getAccessToken();
-    const refreshToken = this.getRefreshToken();
-    
-    return !!(accessToken && refreshToken && !this.isTokenExpired());
-  }
-}
-
-/**
- * User management utilities
- */
-export class UserManager {
-  /**
-   * Get user from storage
-   */
-  static getUser(): User | null {
-    if (typeof window === 'undefined') return null;
-    
-    const userStr = localStorage.getItem(USER_KEY);
-    if (!userStr) return null;
-    
-    try {
-      return JSON.parse(userStr) as User;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Set user in storage
-   */
-  static setUser(user: User): void {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
-  }
-
-  /**
-   * Clear user from storage
-   */
-  static clearUser(): void {
-    if (typeof window === 'undefined') return;
-    localStorage.removeItem(USER_KEY);
-  }
-}
+// User management utilities
+export const UserManager = {
+  getUser: (): any => {
+    const userStr = localStorage.getItem('user');
+    return userStr ? JSON.parse(userStr) : null;
+  },
+  
+  setUser: (user: any): void => {
+    localStorage.setItem('user', JSON.stringify(user));
+  },
+  
+  clearUser: (): void => {
+    localStorage.removeItem('user');
+  },
+};
 
 /**
  * Authentication service
