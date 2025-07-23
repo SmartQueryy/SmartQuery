@@ -6,26 +6,27 @@
 
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { AuthProvider, useAuth, useIsAuthenticated, useCurrentUser, useAccessToken } from '@/components/auth/AuthProvider';
 import { api } from '@/lib/api';
 import { mockUser } from '../../utils/test-utils';
 
 // Mock the auth store
-jest.mock('@/lib/store/auth', () => ({
-  useAuthStore: jest.fn(),
+vi.mock('@/lib/store/auth', () => ({
+  useAuthStore: vi.fn(),
 }));
 
 // Mock the auth utilities
-jest.mock('@/lib/auth', () => ({
-  refreshToken: jest.fn(),
-  logout: jest.fn(),
+vi.mock('@/lib/auth', () => ({
+  refreshToken: vi.fn(),
+  logout: vi.fn(),
 }));
 
 const mockUseAuthStore = require('@/lib/store/auth').useAuthStore;
 
 describe('AuthProvider', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   const TestComponent = () => {
@@ -53,14 +54,14 @@ describe('AuthProvider', () => {
         isAuthenticated: false,
         isLoading: true,
         error: null,
-        setTokens: jest.fn(),
-        setUser: jest.fn(),
-        clearTokens: jest.fn(),
-        clearUser: jest.fn(),
-        setLoading: jest.fn(),
-        setError: jest.fn(),
-        loadSession: jest.fn(),
-        logout: jest.fn(),
+        setTokens: vi.fn(),
+        setUser: vi.fn(),
+        clearTokens: vi.fn(),
+        clearUser: vi.fn(),
+        setLoading: vi.fn(),
+        setError: vi.fn(),
+        loadSession: vi.fn(),
+        logout: vi.fn(),
       });
 
       render(
@@ -76,7 +77,7 @@ describe('AuthProvider', () => {
     });
 
     it('should load session on mount', () => {
-      const mockLoadSession = jest.fn();
+      const mockLoadSession = vi.fn();
       mockUseAuthStore.mockReturnValue({
         user: null,
         accessToken: null,
@@ -84,14 +85,14 @@ describe('AuthProvider', () => {
         isAuthenticated: false,
         isLoading: true,
         error: null,
-        setTokens: jest.fn(),
-        setUser: jest.fn(),
-        clearTokens: jest.fn(),
-        clearUser: jest.fn(),
-        setLoading: jest.fn(),
-        setError: jest.fn(),
+        setTokens: vi.fn(),
+        setUser: vi.fn(),
+        clearTokens: vi.fn(),
+        clearUser: vi.fn(),
+        setLoading: vi.fn(),
+        setError: vi.fn(),
         loadSession: mockLoadSession,
-        logout: jest.fn(),
+        logout: vi.fn(),
       });
 
       render(
@@ -104,8 +105,8 @@ describe('AuthProvider', () => {
     });
 
     it('should verify tokens with server when authenticated', async () => {
-      const mockSetUser = jest.fn();
-      const mockSetLoading = jest.fn();
+      const mockSetUser = vi.fn();
+      const mockSetLoading = vi.fn();
       
       mockUseAuthStore.mockReturnValue({
         user: mockUser,
@@ -114,17 +115,17 @@ describe('AuthProvider', () => {
         isAuthenticated: true,
         isLoading: false,
         error: null,
-        setTokens: jest.fn(),
+        setTokens: vi.fn(),
         setUser: mockSetUser,
-        clearTokens: jest.fn(),
-        clearUser: jest.fn(),
+        clearTokens: vi.fn(),
+        clearUser: vi.fn(),
         setLoading: mockSetLoading,
-        setError: jest.fn(),
-        loadSession: jest.fn(),
-        logout: jest.fn(),
+        setError: vi.fn(),
+        loadSession: vi.fn(),
+        logout: vi.fn(),
       });
 
-      (api.auth.getCurrentUser as jest.Mock).mockResolvedValue({
+      (api.auth.getCurrentUser as Mock).mockResolvedValue({
         success: true,
         data: mockUser,
       });
@@ -142,7 +143,7 @@ describe('AuthProvider', () => {
     });
 
     it('should handle token verification failure', async () => {
-      const mockLogout = jest.fn();
+      const mockLogout = vi.fn();
       
       mockUseAuthStore.mockReturnValue({
         user: mockUser,
@@ -151,17 +152,17 @@ describe('AuthProvider', () => {
         isAuthenticated: true,
         isLoading: false,
         error: null,
-        setTokens: jest.fn(),
-        setUser: jest.fn(),
-        clearTokens: jest.fn(),
-        clearUser: jest.fn(),
-        setLoading: jest.fn(),
-        setError: jest.fn(),
-        loadSession: jest.fn(),
+        setTokens: vi.fn(),
+        setUser: vi.fn(),
+        clearTokens: vi.fn(),
+        clearUser: vi.fn(),
+        setLoading: vi.fn(),
+        setError: vi.fn(),
+        loadSession: vi.fn(),
         logout: mockLogout,
       });
 
-      (api.auth.getCurrentUser as jest.Mock).mockRejectedValue(new Error('Token invalid'));
+      (api.auth.getCurrentUser as Mock).mockRejectedValue(new Error('Token invalid'));
 
       render(
         <AuthProvider>
@@ -177,9 +178,9 @@ describe('AuthProvider', () => {
 
   describe('Login Function', () => {
     it('should handle login with user and tokens', () => {
-      const mockSetUser = jest.fn();
-      const mockSetTokens = jest.fn();
-      const mockSetError = jest.fn();
+      const mockSetUser = vi.fn();
+      const mockSetTokens = vi.fn();
+      const mockSetError = vi.fn();
       
       mockUseAuthStore.mockReturnValue({
         user: null,
@@ -190,12 +191,12 @@ describe('AuthProvider', () => {
         error: null,
         setTokens: mockSetTokens,
         setUser: mockSetUser,
-        clearTokens: jest.fn(),
-        clearUser: jest.fn(),
-        setLoading: jest.fn(),
+        clearTokens: vi.fn(),
+        clearUser: vi.fn(),
+        setLoading: vi.fn(),
         setError: mockSetError,
-        loadSession: jest.fn(),
-        logout: jest.fn(),
+        loadSession: vi.fn(),
+        logout: vi.fn(),
       });
 
       render(
@@ -213,7 +214,7 @@ describe('AuthProvider', () => {
     });
 
     it('should handle login errors', () => {
-      const mockSetError = jest.fn();
+      const mockSetError = vi.fn();
       
       mockUseAuthStore.mockReturnValue({
         user: null,
@@ -222,18 +223,18 @@ describe('AuthProvider', () => {
         isAuthenticated: false,
         isLoading: false,
         error: null,
-        setTokens: jest.fn(),
-        setUser: jest.fn(),
-        clearTokens: jest.fn(),
-        clearUser: jest.fn(),
-        setLoading: jest.fn(),
+        setTokens: vi.fn(),
+        setUser: vi.fn(),
+        clearTokens: vi.fn(),
+        clearUser: vi.fn(),
+        setLoading: vi.fn(),
         setError: mockSetError,
-        loadSession: jest.fn(),
-        logout: jest.fn(),
+        loadSession: vi.fn(),
+        logout: vi.fn(),
       });
 
       // Mock error during login
-      const mockSetUser = jest.fn().mockImplementation(() => {
+      const mockSetUser = vi.fn().mockImplementation(() => {
         throw new Error('Login failed');
       });
 
@@ -258,10 +259,10 @@ describe('AuthProvider', () => {
 
   describe('Logout Function', () => {
     it('should handle logout successfully', async () => {
-      const mockClearTokens = jest.fn();
-      const mockClearUser = jest.fn();
-      const mockSetError = jest.fn();
-      const mockSetLoading = jest.fn();
+      const mockClearTokens = vi.fn();
+      const mockClearUser = vi.fn();
+      const mockSetError = vi.fn();
+      const mockSetLoading = vi.fn();
       
       mockUseAuthStore.mockReturnValue({
         user: mockUser,
@@ -270,14 +271,14 @@ describe('AuthProvider', () => {
         isAuthenticated: true,
         isLoading: false,
         error: null,
-        setTokens: jest.fn(),
-        setUser: jest.fn(),
+        setTokens: vi.fn(),
+        setUser: vi.fn(),
         clearTokens: mockClearTokens,
         clearUser: mockClearUser,
         setLoading: mockSetLoading,
         setError: mockSetError,
-        loadSession: jest.fn(),
-        logout: jest.fn(),
+        loadSession: vi.fn(),
+        logout: vi.fn(),
       });
 
       render(
@@ -298,8 +299,8 @@ describe('AuthProvider', () => {
     });
 
     it('should handle logout errors gracefully', async () => {
-      const mockSetError = jest.fn();
-      const mockSetLoading = jest.fn();
+      const mockSetError = vi.fn();
+      const mockSetLoading = vi.fn();
       
       mockUseAuthStore.mockReturnValue({
         user: mockUser,
@@ -308,16 +309,16 @@ describe('AuthProvider', () => {
         isAuthenticated: true,
         isLoading: false,
         error: null,
-        setTokens: jest.fn(),
-        setUser: jest.fn(),
-        clearTokens: jest.fn().mockImplementation(() => {
+        setTokens: vi.fn(),
+        setUser: vi.fn(),
+        clearTokens: vi.fn().mockImplementation(() => {
           throw new Error('Clear error');
         }),
-        clearUser: jest.fn(),
+        clearUser: vi.fn(),
         setLoading: mockSetLoading,
         setError: mockSetError,
-        loadSession: jest.fn(),
-        logout: jest.fn(),
+        loadSession: vi.fn(),
+        logout: vi.fn(),
       });
 
       render(

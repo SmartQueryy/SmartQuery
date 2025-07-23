@@ -6,37 +6,38 @@
 
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi, type MockedFunction } from 'vitest';
 import LoginPage from '@/app/login/page';
 import { useAuth } from '@/components/auth/AuthProvider';
 
 // Mock the auth context
-jest.mock('@/components/auth/AuthProvider', () => ({
-  useAuth: jest.fn(),
+vi.mock('@/components/auth/AuthProvider', () => ({
+  useAuth: vi.fn(),
 }));
 
 // Mock Next.js navigation
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: jest.fn(),
+    push: vi.fn(),
   }),
   useSearchParams: () => new URLSearchParams(),
 }));
 
-const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
+const mockUseAuth = useAuth as MockedFunction<typeof useAuth>;
 
 describe('Login Page', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockUseAuth.mockReturnValue({
       user: null,
       accessToken: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
-      login: jest.fn(),
-      logout: jest.fn(),
-      refreshToken: jest.fn(),
-      setError: jest.fn(),
+      login: vi.fn(),
+      logout: vi.fn(),
+      refreshToken: vi.fn(),
+      setError: vi.fn(),
     });
   });
 
@@ -74,22 +75,22 @@ describe('Login Page', () => {
 
   describe('Authentication States', () => {
     it('should redirect to dashboard when already authenticated', () => {
-      const mockPush = jest.fn();
-      jest.doMock('next/navigation', () => ({
+      const mockPush = vi.fn();
+      vi.doMock('next/navigation', () => ({
         useRouter: () => ({ push: mockPush }),
         useSearchParams: () => new URLSearchParams(),
       }));
 
       mockUseAuth.mockReturnValue({
-        user: { id: '1', name: 'Test User', email: 'test@example.com' },
+        user: { id: '1', name: 'Test User', email: 'test@example.com', avatar_url: '', created_at: '2024-01-01T00:00:00Z', last_sign_in_at: '2024-01-01T12:00:00Z' },
         accessToken: 'token',
         isAuthenticated: true,
         isLoading: false,
         error: null,
-        login: jest.fn(),
-        logout: jest.fn(),
-        refreshToken: jest.fn(),
-        setError: jest.fn(),
+        login: vi.fn(),
+        logout: vi.fn(),
+        refreshToken: vi.fn(),
+        setError: vi.fn(),
       });
 
       render(<LoginPage />);
@@ -98,16 +99,16 @@ describe('Login Page', () => {
     });
 
     it('should show error message when authentication fails', () => {
-      const mockSetError = jest.fn();
+      const mockSetError = vi.fn();
       mockUseAuth.mockReturnValue({
         user: null,
         accessToken: null,
         isAuthenticated: false,
         isLoading: false,
         error: 'Authentication failed',
-        login: jest.fn(),
-        logout: jest.fn(),
-        refreshToken: jest.fn(),
+        login: vi.fn(),
+        logout: vi.fn(),
+        refreshToken: vi.fn(),
         setError: mockSetError,
       });
 
@@ -118,22 +119,22 @@ describe('Login Page', () => {
     });
 
     it('should handle OAuth errors from URL parameters', () => {
-      const mockSetError = jest.fn();
+      const mockSetError = vi.fn();
       mockUseAuth.mockReturnValue({
         user: null,
         accessToken: null,
         isAuthenticated: false,
         isLoading: false,
         error: null,
-        login: jest.fn(),
-        logout: jest.fn(),
-        refreshToken: jest.fn(),
+        login: vi.fn(),
+        logout: vi.fn(),
+        refreshToken: vi.fn(),
         setError: mockSetError,
       });
 
       // Mock useSearchParams to return an error
-      jest.doMock('next/navigation', () => ({
-        useRouter: () => ({ push: jest.fn() }),
+      vi.doMock('next/navigation', () => ({
+        useRouter: () => ({ push: vi.fn() }),
         useSearchParams: () => new URLSearchParams('?error=access_denied'),
       }));
 

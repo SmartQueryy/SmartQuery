@@ -6,57 +6,58 @@
 
 import React, { ReactElement } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
+import { vi } from 'vitest';
 import { AuthProvider } from '@/components/auth/AuthProvider';
 import type { User } from '@/lib/types';
 
 // Mock the API client
-jest.mock('@/lib/api', () => ({
+vi.mock('@/lib/api', () => ({
   api: {
     auth: {
-      googleLogin: jest.fn(),
-      getCurrentUser: jest.fn(),
-      logout: jest.fn(),
-      refreshToken: jest.fn(),
+      googleLogin: vi.fn(),
+      getCurrentUser: vi.fn(),
+      logout: vi.fn(),
+      refreshToken: vi.fn(),
     },
     projects: {
-      getProjects: jest.fn(),
-      createProject: jest.fn(),
-      getProject: jest.fn(),
-      deleteProject: jest.fn(),
-      getUploadUrl: jest.fn(),
-      getProjectStatus: jest.fn(),
+      getProjects: vi.fn(),
+      createProject: vi.fn(),
+      getProject: vi.fn(),
+      deleteProject: vi.fn(),
+      getUploadUrl: vi.fn(),
+      getProjectStatus: vi.fn(),
     },
     chat: {
-      sendMessage: jest.fn(),
-      getMessages: jest.fn(),
-      getPreview: jest.fn(),
-      getSuggestions: jest.fn(),
+      sendMessage: vi.fn(),
+      getMessages: vi.fn(),
+      getPreview: vi.fn(),
+      getSuggestions: vi.fn(),
     },
     system: {
-      healthCheck: jest.fn(),
-      systemStatus: jest.fn(),
+      healthCheck: vi.fn(),
+      systemStatus: vi.fn(),
     },
   },
 }));
 
 // Mock Next.js router
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: jest.fn(),
-    replace: jest.fn(),
-    back: jest.fn(),
-    forward: jest.fn(),
-    refresh: jest.fn(),
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
   }),
   useSearchParams: () => new URLSearchParams(),
 }));
 
 // Mock localStorage
 const localStorageMock = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  clear: jest.fn(),
+  getItem: vi.fn(),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+  clear: vi.fn(),
 };
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
@@ -66,8 +67,8 @@ Object.defineProperty(window, 'localStorage', {
 Object.defineProperty(window, 'location', {
   value: {
     href: 'http://localhost:3000',
-    assign: jest.fn(),
-    replace: jest.fn(),
+    assign: vi.fn(),
+    replace: vi.fn(),
   },
   writable: true,
 });
@@ -123,14 +124,14 @@ export const mockAuthStore = {
   isAuthenticated: false,
   isLoading: false,
   error: null,
-  setTokens: jest.fn(),
-  setUser: jest.fn(),
-  clearTokens: jest.fn(),
-  clearUser: jest.fn(),
-  setLoading: jest.fn(),
-  setError: jest.fn(),
-  loadSession: jest.fn(),
-  logout: jest.fn(),
+  setTokens: vi.fn(),
+  setUser: vi.fn(),
+  clearTokens: vi.fn(),
+  clearUser: vi.fn(),
+  setLoading: vi.fn(),
+  setError: vi.fn(),
+  loadSession: vi.fn(),
+  logout: vi.fn(),
 };
 
 // Mock auth context
@@ -140,15 +141,15 @@ export const mockAuthContext = {
   isAuthenticated: false,
   isLoading: false,
   error: null,
-  login: jest.fn(),
-  logout: jest.fn(),
-  refreshToken: jest.fn(),
-  setError: jest.fn(),
+  login: vi.fn(),
+  logout: vi.fn(),
+  refreshToken: vi.fn(),
+  setError: vi.fn(),
 };
 
 // Helper to clear all mocks
 export const clearAllMocks = () => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
   localStorageMock.getItem.mockClear();
   localStorageMock.setItem.mockClear();
   localStorageMock.removeItem.mockClear();

@@ -6,38 +6,39 @@
 
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi, type MockedFunction, type Mock } from 'vitest';
 import { LoginButton, GoogleLoginButton } from '@/components/auth/LoginButton';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { api } from '@/lib/api';
 
 // Mock the auth context
-jest.mock('@/components/auth/AuthProvider', () => ({
-  useAuth: jest.fn(),
+vi.mock('@/components/auth/AuthProvider', () => ({
+  useAuth: vi.fn(),
 }));
 
 // Mock Next.js navigation
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: jest.fn(),
+    push: vi.fn(),
   }),
   useSearchParams: () => new URLSearchParams(),
 }));
 
-const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
+const mockUseAuth = useAuth as MockedFunction<typeof useAuth>;
 
 describe('LoginButton', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockUseAuth.mockReturnValue({
       user: null,
       accessToken: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
-      login: jest.fn(),
-      logout: jest.fn(),
-      refreshToken: jest.fn(),
-      setError: jest.fn(),
+      login: vi.fn(),
+      logout: vi.fn(),
+      refreshToken: vi.fn(),
+      setError: vi.fn(),
     });
   });
 
@@ -146,7 +147,7 @@ describe('LoginButton', () => {
     });
 
     it('should handle click errors gracefully', () => {
-      const mockSetError = jest.fn();
+      const mockSetError = vi.fn();
       mockUseAuth.mockReturnValue({
         ...mockUseAuth(),
         setError: mockSetError,
@@ -158,7 +159,7 @@ describe('LoginButton', () => {
       window.location = { href: '' } as any;
       
       Object.defineProperty(window.location, 'href', {
-        set: jest.fn().mockImplementation(() => {
+        set: vi.fn().mockImplementation(() => {
           throw new Error('Redirect failed');
         }),
       });
@@ -176,8 +177,8 @@ describe('LoginButton', () => {
 
   describe('OAuth Callback Handling', () => {
     it('should handle OAuth callback with authorization code', async () => {
-      const mockLogin = jest.fn();
-      const mockSetError = jest.fn();
+      const mockLogin = vi.fn();
+      const mockSetError = vi.fn();
       
       mockUseAuth.mockReturnValue({
         ...mockUseAuth(),
@@ -186,12 +187,12 @@ describe('LoginButton', () => {
       });
 
       // Mock useSearchParams to return a code
-      jest.doMock('next/navigation', () => ({
-        useRouter: () => ({ push: jest.fn() }),
+      vi.doMock('next/navigation', () => ({
+        useRouter: () => ({ push: vi.fn() }),
         useSearchParams: () => new URLSearchParams('?code=auth-code'),
       }));
 
-      (api.auth.googleLogin as jest.Mock).mockResolvedValue({
+      (api.auth.googleLogin as Mock).mockResolvedValue({
         success: true,
         data: {
           user: { id: '1', name: 'Test User', email: 'test@example.com' },
@@ -211,7 +212,7 @@ describe('LoginButton', () => {
     });
 
     it('should handle OAuth callback errors', async () => {
-      const mockSetError = jest.fn();
+      const mockSetError = vi.fn();
       
       mockUseAuth.mockReturnValue({
         ...mockUseAuth(),
@@ -219,8 +220,8 @@ describe('LoginButton', () => {
       });
 
       // Mock useSearchParams to return an error
-      jest.doMock('next/navigation', () => ({
-        useRouter: () => ({ push: jest.fn() }),
+      vi.doMock('next/navigation', () => ({
+        useRouter: () => ({ push: vi.fn() }),
         useSearchParams: () => new URLSearchParams('?error=access_denied'),
       }));
 
@@ -256,17 +257,17 @@ describe('LoginButton', () => {
 
 describe('GoogleLoginButton', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockUseAuth.mockReturnValue({
       user: null,
       accessToken: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
-      login: jest.fn(),
-      logout: jest.fn(),
-      refreshToken: jest.fn(),
-      setError: jest.fn(),
+      login: vi.fn(),
+      logout: vi.fn(),
+      refreshToken: vi.fn(),
+      setError: vi.fn(),
     });
   });
 

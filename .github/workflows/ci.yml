@@ -38,8 +38,7 @@ jobs:
       continue-on-error: true
     
     - name: Run type checking
-      run: echo "Skipping type checking for now - test files need Vitest migration"
-      continue-on-error: true
+      run: npm run type-check
     
     - name: Run tests
       run: npm run test

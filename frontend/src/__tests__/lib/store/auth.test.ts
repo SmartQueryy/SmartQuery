@@ -5,31 +5,32 @@
  */
 
 import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { useAuthStore } from '@/lib/store/auth';
 import { TokenManager, UserManager } from '@/lib/auth';
 import { mockUser } from '../../utils/test-utils';
 
 // Mock the auth utilities
-jest.mock('@/lib/auth', () => ({
+vi.mock('@/lib/auth', () => ({
   TokenManager: {
-    getAccessToken: jest.fn(),
-    getRefreshToken: jest.fn(),
-    getTokenExpiry: jest.fn(),
-    setTokens: jest.fn(),
-    clearTokens: jest.fn(),
-    isTokenExpired: jest.fn(),
-    hasValidTokens: jest.fn(),
+    getAccessToken: vi.fn(),
+    getRefreshToken: vi.fn(),
+    getTokenExpiry: vi.fn(),
+    setTokens: vi.fn(),
+    clearTokens: vi.fn(),
+    isTokenExpired: vi.fn(),
+    hasValidTokens: vi.fn(),
   },
   UserManager: {
-    getUser: jest.fn(),
-    setUser: jest.fn(),
-    clearUser: jest.fn(),
+    getUser: vi.fn(),
+    setUser: vi.fn(),
+    clearUser: vi.fn(),
   },
 }));
 
 describe('Auth Store', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Initial State', () => {
@@ -162,10 +163,10 @@ describe('Auth Store', () => {
       const { result } = renderHook(() => useAuthStore());
       
       // Mock valid tokens and user
-      (TokenManager.hasValidTokens as jest.Mock).mockReturnValue(true);
-      (TokenManager.getAccessToken as jest.Mock).mockReturnValue('access-token');
-      (TokenManager.getRefreshToken as jest.Mock).mockReturnValue('refresh-token');
-      (UserManager.getUser as jest.Mock).mockReturnValue(mockUser);
+      (TokenManager.hasValidTokens as Mock).mockReturnValue(true);
+      (TokenManager.getAccessToken as Mock).mockReturnValue('access-token');
+      (TokenManager.getRefreshToken as Mock).mockReturnValue('refresh-token');
+      (UserManager.getUser as Mock).mockReturnValue(mockUser);
 
       act(() => {
         result.current.loadSession();
@@ -183,7 +184,7 @@ describe('Auth Store', () => {
       const { result } = renderHook(() => useAuthStore());
       
       // Mock invalid tokens
-      (TokenManager.hasValidTokens as jest.Mock).mockReturnValue(false);
+      (TokenManager.hasValidTokens as Mock).mockReturnValue(false);
 
       act(() => {
         result.current.loadSession();
@@ -201,7 +202,7 @@ describe('Auth Store', () => {
       const { result } = renderHook(() => useAuthStore());
       
       // Mock error during session loading
-      (TokenManager.hasValidTokens as jest.Mock).mockImplementation(() => {
+      (TokenManager.hasValidTokens as Mock).mockImplementation(() => {
         throw new Error('Storage error');
       });
 
@@ -247,7 +248,7 @@ describe('Auth Store', () => {
       const { result } = renderHook(() => useAuthStore());
       
       // Mock error during logout
-      (TokenManager.clearTokens as jest.Mock).mockImplementation(() => {
+      (TokenManager.clearTokens as Mock).mockImplementation(() => {
         throw new Error('Clear error');
       });
 
