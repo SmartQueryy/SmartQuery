@@ -2,9 +2,9 @@ name: Frontend Docker CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, dockerized-frontendlol]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, dockerized-frontendlol]
 
 jobs:
   frontend-docker:
