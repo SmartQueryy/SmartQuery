@@ -1,11 +1,19 @@
 import json
+import os
 import time
 from typing import Any, Dict
 
+import pytest
 import requests
 
 # Backend API base URL
 API_BASE_URL = "http://localhost:8000"
+
+# Skip these tests if no backend server is running (CI environment)
+pytestmark = pytest.mark.skipif(
+    os.getenv("CI") == "true" and not os.getenv("RUN_INTEGRATION_TESTS"),
+    reason="Integration tests require a running backend server"
+)
 
 
 class TestProjectIntegration:
