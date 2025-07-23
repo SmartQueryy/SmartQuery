@@ -16,8 +16,8 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image
-        run: docker build -t smartquery-frontend ./frontend
+      - name: Build Docker image (monorepo root context)
+        run: docker build -f frontend/Dockerfile -t smartquery-frontend .
 
       - name: Run lint in Docker
         run: docker run --rm smartquery-frontend npm run lint
