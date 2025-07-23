@@ -31,10 +31,12 @@ jobs:
         cache-dependency-path: package-lock.json
     
     - name: Install dependencies
-      run: npm ci
+      run: |
+        npm ci
+        npm rebuild
     
     - name: Run ESLint
-      run: echo "Skipping ESLint for now - configuration issue to be resolved"
+      run: echo "ESLint disabled due to configuration compatibility issues"
       continue-on-error: true
     
     - name: Run type checking
@@ -149,7 +151,9 @@ jobs:
     
     - name: Install frontend dependencies
       working-directory: ./frontend
-      run: npm ci
+      run: |
+        npm ci
+        npm rebuild
     
     - name: Install backend dependencies
       working-directory: ./backend
@@ -221,7 +225,10 @@ jobs:
     
     - name: Frontend security audit
       working-directory: ./frontend
-      run: npm audit --audit-level=high || echo "Security audit found issues but continuing..."
+      run: |
+        npm ci
+        npm rebuild
+        npm audit --audit-level=high || echo "Security audit found issues but continuing..."
     
     - name: Setup Python for security check
       uses: actions/setup-python@v4
