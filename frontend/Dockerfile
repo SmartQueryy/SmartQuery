@@ -1,5 +1,5 @@
-# Use a specific Node version for consistency
-FROM node:18.20.2-alpine
+# Use a specific Node version for consistency (Debian-based for better native module support)
+FROM node:18.20.2
 
 WORKDIR /app
 
@@ -13,9 +13,8 @@ COPY frontend ./frontend
 # Install all workspace dependencies at the monorepo root
 RUN npm ci
 
-# HACK: Force install the native rollup binary for Alpine Linux to fix npm bug
-# See: https://github.com/npm/cli/issues/4828
-RUN npm install --save-dev --arch=x64 --platform=linux --libc=musl rollup
+# Rebuild native modules for the current platform
+RUN npm rebuild
 
 WORKDIR /app/frontend
 
