@@ -13,6 +13,10 @@ COPY frontend ./frontend
 # Install all workspace dependencies at the monorepo root
 RUN npm ci
 
+# HACK: Force install the native rollup binary for Alpine Linux to fix npm bug
+# See: https://github.com/npm/cli/issues/4828
+RUN npm install --save-dev --arch=x64 --platform=linux --libc=musl rollup
+
 WORKDIR /app/frontend
 
 # Run lint and build (tests run in CI/CD, not during image build)
