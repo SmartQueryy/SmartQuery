@@ -66,7 +66,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             
             if (response.success && response.data) {
               // Token is valid, update user info
-              setUser(response.data);
+              setUser(response.data.user);
             } else {
               // Token is invalid, clear session
               await handleLogout();

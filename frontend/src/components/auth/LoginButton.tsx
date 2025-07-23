@@ -29,10 +29,10 @@ export function LoginButton({
   redirectTo = '/dashboard',
   showIcon = true,
 }: LoginButtonProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const { login, setError } = useAuth();
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const searchParams = useSearchParams();
 
   // Check for error from OAuth callback
   const error = searchParams.get('error');
@@ -70,6 +70,7 @@ export function LoginButton({
       });
 
       if (response.success && response.data) {
+        // Login successful, handle tokens and user data
         const { user, access_token, refresh_token, expires_in } = response.data;
         
         // Login user with tokens
@@ -82,7 +83,7 @@ export function LoginButton({
         // Redirect to dashboard or specified page
         router.push(redirectTo);
       } else {
-        throw new Error(response.error || 'Login failed');
+        throw new Error('Login failed');
       }
     } catch (error) {
       console.error('OAuth callback failed:', error);

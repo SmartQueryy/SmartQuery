@@ -35,123 +35,38 @@ export const api = {
         },
       };
     },
-    logout: async () => {
-      return { success: true };
-    },
-    refreshToken: async () => {
-      return {
-        success: true,
-        data: {
-          access_token: 'new-access-token',
-          refresh_token: 'new-refresh-token',
-          expires_in: 3600,
-        },
-      };
-    },
+    logout: async () => ({ success: true }),
+    refreshToken: async () => ({
+      success: true,
+      data: {
+        access_token: 'new-mock-access-token',
+        refresh_token: 'new-mock-refresh-token',
+        expires_in: 3600,
+      },
+    }),
   },
   projects: {
-    getProjects: async () => {
-      return {
-        success: true,
-        data: {
-          projects: [],
-        },
-      };
-    },
-    createProject: async (data: any) => {
-      return {
-        success: true,
-        data: {
-          project: {
-            id: '1',
-            name: data.name,
-            created_at: '2024-01-01T00:00:00Z',
-          },
-        },
-      };
-    },
-    getProject: async (id: string) => {
-      return {
-        success: true,
-        data: {
-          project: {
-            id,
-            name: 'Test Project',
-            created_at: '2024-01-01T00:00:00Z',
-          },
-        },
-      };
-    },
-    deleteProject: async (id: string) => {
-      return { success: true };
-    },
-    getUploadUrl: async (id: string) => {
-      return {
-        success: true,
-        data: {
-          upload_url: 'https://example.com/upload',
-        },
-      };
-    },
-    getProjectStatus: async (id: string) => {
-      return {
-        success: true,
-        data: {
-          status: 'completed',
-        },
-      };
-    },
+    getProjects: async () => ({ success: true, data: [] }),
+    createProject: async (data: any) => ({ success: true, data: { id: '1', name: data.name } }),
+    getProject: async (id: string) => ({ success: true, data: { id, name: 'Mock Project' } }),
+    deleteProject: async (id: string) => ({ success: true }),
+    getUploadUrl: async (projectId: string) => ({ success: true, data: { upload_url: 'http://mock.upload.url' } }),
+    getProjectStatus: async (projectId: string) => ({ success: true, data: { status: 'completed' } }),
   },
   chat: {
-    sendMessage: async (projectId: string, message: string) => {
-      return {
-        success: true,
-        data: {
-          response: 'Mock response',
-        },
-      };
-    },
-    getMessages: async (projectId: string) => {
-      return {
-        success: true,
-        data: {
-          messages: [],
-        },
-      };
-    },
-    getPreview: async (projectId: string) => {
-      return {
-        success: true,
-        data: {
-          preview: [],
-        },
-      };
-    },
-    getSuggestions: async (projectId: string) => {
-      return {
-        success: true,
-        data: {
-          suggestions: [],
-        },
-      };
-    },
+    sendMessage: async (projectId: string, message: string) => ({ success: true, data: { message: 'Mock response', result_type: 'text', result: 'Mock result' } }),
+    getMessages: async (projectId: string) => ({ success: true, data: [] }),
+    getPreview: async (projectId: string) => ({ success: true, data: { headers: ['col1'], rows: [['val1']] } }),
+    getSuggestions: async (projectId: string) => ({ success: true, data: ['suggestion1'] }),
   },
   system: {
-    healthCheck: async () => {
-      return {
-        success: true,
-        data: {
-          status: 'healthy',
-        },
-      };
-    },
-    systemStatus: async () => {
-      return {
-        success: true,
-        data: {
-          status: 'operational',
-        },
-      };
-    },
+    healthCheck: async () => ({ success: true }),
+    systemStatus: async () => ({ success: true, data: { status: 'healthy' } }),
   },
-}; 
+};
+
+// Export individual API modules for backward compatibility
+export const authApi = api.auth;
+export const projectApi = api.projects;
+export const chatApi = api.chat;
+export const systemApi = api.system; 

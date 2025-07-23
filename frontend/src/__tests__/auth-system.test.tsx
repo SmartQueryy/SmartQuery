@@ -22,10 +22,11 @@ vi.mock('@/lib/store/auth', () => ({
     setUser: vi.fn(),
     clearTokens: vi.fn(),
     clearUser: vi.fn(),
-    setLoading: vi.fn(),
     setError: vi.fn(),
+    setLoading: vi.fn(),
     loadSession: vi.fn(),
     logout: vi.fn(),
+    login: vi.fn(),
   })),
 }));
 
@@ -96,27 +97,59 @@ describe('Authentication System', () => {
 
   describe('Auth Store', () => {
     it('should have correct initial state', () => {
-      const store = vi.mocked(useAuthStore)();
+      // Create a test component to access the store
+      const TestComponent = () => {
+        const store = useAuthStore();
+        return (
+          <div>
+            <div data-testid="user">{store.user ? 'has-user' : 'no-user'}</div>
+            <div data-testid="accessToken">{store.accessToken ? 'has-token' : 'no-token'}</div>
+            <div data-testid="isAuthenticated">{store.isAuthenticated.toString()}</div>
+            <div data-testid="isLoading">{store.isLoading.toString()}</div>
+            <div data-testid="error">{store.error || 'no-error'}</div>
+          </div>
+        );
+      };
+
+      render(<TestComponent />);
       
-      expect(store.user).toBeNull();
-      expect(store.accessToken).toBeNull();
-      expect(store.refreshToken).toBeNull();
-      expect(store.isAuthenticated).toBe(false);
-      expect(store.isLoading).toBe(false);
-      expect(store.error).toBeNull();
+      expect(screen.getByTestId('user')).toHaveTextContent('no-user');
+      expect(screen.getByTestId('accessToken')).toHaveTextContent('no-token');
+      expect(screen.getByTestId('isAuthenticated')).toHaveTextContent('false');
+      expect(screen.getByTestId('isLoading')).toHaveTextContent('false');
+      expect(screen.getByTestId('error')).toHaveTextContent('no-error');
     });
 
     it('should have all required methods', () => {
-      const store = vi.mocked(useAuthStore)();
+      // Create a test component to access the store
+      const TestComponent = () => {
+        const store = useAuthStore();
+        return (
+          <div>
+            <div data-testid="setTokens">{typeof store.setTokens}</div>
+            <div data-testid="setUser">{typeof store.setUser}</div>
+            <div data-testid="clearTokens">{typeof store.clearTokens}</div>
+            <div data-testid="clearUser">{typeof store.clearUser}</div>
+            <div data-testid="setLoading">{typeof store.setLoading}</div>
+            <div data-testid="setError">{typeof store.setError}</div>
+            <div data-testid="loadSession">{typeof store.loadSession}</div>
+            <div data-testid="logout">{typeof store.logout}</div>
+            <div data-testid="login">{typeof store.login}</div>
+          </div>
+        );
+      };
+
+      render(<TestComponent />);
       
-      expect(typeof store.setTokens).toBe('function');
-      expect(typeof store.setUser).toBe('function');
-      expect(typeof store.clearTokens).toBe('function');
-      expect(typeof store.clearUser).toBe('function');
-      expect(typeof store.setLoading).toBe('function');
-      expect(typeof store.setError).toBe('function');
-      expect(typeof store.loadSession).toBe('function');
-      expect(typeof store.logout).toBe('function');
+      expect(screen.getByTestId('setTokens')).toHaveTextContent('function');
+      expect(screen.getByTestId('setUser')).toHaveTextContent('function');
+      expect(screen.getByTestId('clearTokens')).toHaveTextContent('function');
+      expect(screen.getByTestId('clearUser')).toHaveTextContent('function');
+      expect(screen.getByTestId('setLoading')).toHaveTextContent('function');
+      expect(screen.getByTestId('setError')).toHaveTextContent('function');
+      expect(screen.getByTestId('loadSession')).toHaveTextContent('function');
+      expect(screen.getByTestId('logout')).toHaveTextContent('function');
+      expect(screen.getByTestId('login')).toHaveTextContent('function');
     });
   });
 

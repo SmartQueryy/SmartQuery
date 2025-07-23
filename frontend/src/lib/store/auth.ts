@@ -26,6 +26,7 @@ interface AuthState {
   setLoading: (loading: boolean) => void;
   loadSession: () => void;
   logout: () => void;
+  login: (user: User, tokens: { accessToken: string; refreshToken: string; expiresAt: number }) => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -128,6 +129,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
     } catch (error) {
       set({ error: 'Failed to logout properly' });
+    }
+  },
+
+  login: (user: User, tokens: { accessToken: string; refreshToken: string; expiresAt: number }) => {
+    try {
+      TokenManager.setTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresAt - Date.now());
+      UserManager.setUser(user);
+      set({
+        user,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        isAuthenticated: true,
+        error: null,
+      });
+    } catch (error) {
+      set({ error: 'Failed to complete login' });
     }
   },
 }));

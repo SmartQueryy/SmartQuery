@@ -220,4 +220,37 @@ export const clearTokens = TokenManager.clearTokens;
 export const refreshToken = AuthService.refreshToken;
 export const logout = AuthService.logout;
 export const isAuthenticated = AuthService.isAuthenticated;
-export const getCurrentUser = AuthService.getCurrentUser; 
+export const getCurrentUser = AuthService.getCurrentUser;
+
+// Additional convenience functions for backward compatibility
+export const authApi = {
+  googleLogin: async (data: { google_token: string }) => {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/google`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  },
+  getCurrentUser: async () => {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+      throw new Error('No access token available');
+    }
+    
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+    return response.json();
+  },
+  logout: async () => {
+    return logout();
+  },
+  refreshToken: async () => {
+    return refreshToken();
+  },
+}; 

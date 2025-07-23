@@ -196,7 +196,14 @@ describe('LoginButton', () => {
       vi.mocked(api.auth.googleLogin).mockResolvedValue({
         success: true,
         data: {
-          user: { id: '1', name: 'Test User', email: 'test@example.com' },
+          user: { 
+            id: '1', 
+            name: 'Test User', 
+            email: 'test@example.com',
+            avatar_url: '',
+            created_at: '2024-01-01T00:00:00Z',
+            last_sign_in_at: '2024-01-01T12:00:00Z'
+          },
           access_token: 'access-token',
           refresh_token: 'refresh-token',
           expires_in: 3600,
