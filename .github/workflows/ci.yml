@@ -52,9 +52,8 @@ jobs:
     
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
-      if: matrix.node-version == '20.x'
       with:
-        name: frontend-build
+        name: frontend-build-${{ matrix.node-version }}
         path: frontend/.next/
         retention-days: 1
 
@@ -256,7 +255,7 @@ jobs:
     - name: Download frontend build
       uses: actions/download-artifact@v4
       with:
-        name: frontend-build
+        name: frontend-build-20.x
         path: frontend/.next/
     
     - name: Deploy to staging
@@ -267,7 +266,7 @@ jobs:
     
     - name: Notify deployment
       uses: 8398a7/action-slack@v3
-      if: always()
+      if: always() && secrets.SLACK_WEBHOOK_URL
       with:
         status: ${{ job.status }}
         text: 'Deployment completed'
