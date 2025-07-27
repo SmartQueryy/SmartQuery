@@ -1,0 +1,29 @@
+name: Test CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+
+jobs:
+  test:
+    name: Test CI Pipeline
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Test frontend build
+      working-directory: ./frontend
+      run: |
+        echo "Testing frontend build..."
+        npm ci
+        npm run build
+    
+    - name: Test backend setup
+      working-directory: ./backend
+      run: |
+        echo "Testing backend setup..."
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+        python -c "import fastapi; print('FastAPI imported successfully')" 

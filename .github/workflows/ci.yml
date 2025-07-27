@@ -2,9 +2,8 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop, dockerized-frontendlol ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main, develop, dockerized-frontendlol ]
 
 jobs:
   # Frontend CI/CD
