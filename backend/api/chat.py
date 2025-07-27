@@ -17,7 +17,7 @@ from models.response_schemas import (
     SendMessageResponse,
 )
 from services.project_service import get_project_service
-from services.llm_service import llm_service
+from services.langchain_service import langchain_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 project_service = get_project_service()
@@ -263,23 +263,31 @@ async def send_message(
         created_at=datetime.utcnow().isoformat() + "Z",
     )
 
-    # Use LLMService for AI response, fallback to mock if not configured
+    # Use LangChain service for query processing
     try:
-        ai_content = llm_service.run(request.message)
-        # For now, just echo the LLM response as the AI message content
-        query_result = QueryResult(
-            id=str(uuid.uuid4()),
-            query=request.message,
-            sql_query="",  # To be filled by future agent logic
-            result_type="summary",
-            data=[],
-            execution_time=0.0,
-            row_count=0,
-            chart_config=None,
+        query_result = langchain_service.process_query(
+            request.message, project_id, user_id
         )
+
+        # Create AI response content based on result type
+        if query_result.result_type == "error":
+            ai_content = f"I encountered an error: {query_result.error}"
+        elif query_result.result_type == "summary":
+            ai_content = query_result.summary or "Here's what I found."
+        elif query_result.result_type == "table":
+            ai_content = f"I found {query_result.row_count} results for your query. Here's the data:"
+            if query_result.sql_query:
+                ai_content += f"\n\nSQL Query: `{query_result.sql_query}`"
+        elif query_result.result_type == "chart":
+            ai_content = f"I've created a {query_result.chart_config.get('type', 'chart') if query_result.chart_config else 'chart'} visualization for your query."
+            if query_result.sql_query:
+                ai_content += f"\n\nSQL Query: `{query_result.sql_query}`"
+        else:
+            ai_content = "Here are your results."
+
     except Exception as e:
-        # Fallback to mock logic if LLM not available
-        ai_content = f"[MOCK] Here are the results for your query: '{request.message}'"
+        # Fallback to mock logic if LangChain service fails
+        ai_content = f"[FALLBACK] Processing query: '{request.message}'"
         query_result = generate_mock_query_result(request.message, project_id)
 
     # Store message in mock database
@@ -389,7 +397,16 @@ async def get_query_suggestions(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid project ID")
 
-    # Return mock suggestions
-    suggestions = [QuerySuggestion(**sug) for sug in MOCK_SUGGESTIONS]
+    # Use LangChain service for intelligent suggestions
+    try:
+        suggestions_data = langchain_service.generate_suggestions(project_id, user_id)
+        suggestions = [QuerySuggestion(**sug) for sug in suggestions_data]
+
+        # If no suggestions generated, fallback to mock
+        if not suggestions:
+            suggestions = [QuerySuggestion(**sug) for sug in MOCK_SUGGESTIONS[:3]]
+    except Exception as e:
+        # Fallback to mock suggestions
+        suggestions = [QuerySuggestion(**sug) for sug in MOCK_SUGGESTIONS[:3]]
 
     return ApiResponse(success=True, data=suggestions)
