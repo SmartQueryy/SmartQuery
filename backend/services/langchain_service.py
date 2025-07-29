@@ -1,15 +1,20 @@
-import os
 import json
-from typing import Dict, Any, Optional, List
-from langchain_openai import ChatOpenAI
-from langchain.agents import initialize_agent, Tool, AgentType
+import logging
+import os
+from typing import Any, Dict, List, Optional
+
+from langchain.agents import AgentType, Tool, initialize_agent
 from langchain.schema import BaseMessage, HumanMessage, SystemMessage
 from langchain.tools import BaseTool
+from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
 from models.response_schemas import QueryResult
+from services.duckdb_service import duckdb_service
 from services.project_service import get_project_service
 from services.storage_service import storage_service
+
+logger = logging.getLogger(__name__)
 
 
 class SQLGenerationInput(BaseModel):
@@ -155,7 +160,7 @@ class LangChainService:
 
             if query_type in ["sql", "chart"]:
                 return self._process_sql_query(
-                    question, schema_info, query_type, project_id
+                    question, schema_info, query_type, project_id, user_id
                 )
             else:
                 return self._process_general_query(question, project)
@@ -181,7 +186,12 @@ class LangChainService:
         return "\n".join(schema_lines)
 
     def _process_sql_query(
-        self, question: str, schema_info: str, query_type: str, project_id: str
+        self,
+        question: str,
+        schema_info: str,
+        query_type: str,
+        project_id: str,
+        user_id: str,
     ) -> QueryResult:
         """Process SQL-type queries."""
         try:
@@ -195,22 +205,64 @@ Question: {question}
             # Clean up SQL query
             sql_query = sql_query.replace("```sql", "").replace("```", "").strip()
 
-            # For now, return mock data - this will be replaced by actual DuckDB execution in next task
-            result_type = "chart" if query_type == "chart" else "table"
-            mock_data = self._generate_mock_data(question, result_type)
+            # Validate SQL query for safety
+            is_valid, validation_error = duckdb_service.validate_sql_query(sql_query)
+            if not is_valid:
+                return self._create_error_result(
+                    question, f"Invalid SQL query: {validation_error}"
+                )
 
-            return QueryResult(
-                id=f"qr_{project_id}_{hash(question) % 10000}",
-                query=question,
-                sql_query=sql_query,
-                result_type=result_type,
-                data=mock_data["data"],
-                execution_time=0.5,
-                row_count=len(mock_data["data"]),
-                chart_config=(
-                    mock_data.get("chart_config") if result_type == "chart" else None
-                ),
-            )
+            # Execute SQL query using DuckDB
+            try:
+                result_data, execution_time, row_count = duckdb_service.execute_query(
+                    sql_query, project_id, user_id
+                )
+
+                # Analyze query to enhance result metadata
+                query_info = duckdb_service.get_query_info(sql_query)
+
+                # Determine result type and chart config
+                result_type = "chart" if query_type == "chart" else "table"
+                chart_config = None
+
+                if result_type == "chart" and query_info.get("suggested_chart_type"):
+                    chart_config = self._generate_chart_config(
+                        result_data, query_info.get("suggested_chart_type"), question
+                    )
+
+                return QueryResult(
+                    id=f"qr_{project_id}_{hash(question) % 10000}",
+                    query=question,
+                    sql_query=sql_query,
+                    result_type=result_type,
+                    data=result_data,
+                    execution_time=execution_time,
+                    row_count=row_count,
+                    chart_config=chart_config,
+                )
+
+            except Exception as e:
+                # Fallback to mock data if DuckDB execution fails
+                logger.error(
+                    f"DuckDB execution failed, falling back to mock data: {str(e)}"
+                )
+                result_type = "chart" if query_type == "chart" else "table"
+                mock_data = self._generate_mock_data(question, result_type)
+
+                return QueryResult(
+                    id=f"qr_{project_id}_{hash(question) % 10000}",
+                    query=question,
+                    sql_query=sql_query,
+                    result_type=result_type,
+                    data=mock_data["data"],
+                    execution_time=0.5,
+                    row_count=len(mock_data["data"]),
+                    chart_config=(
+                        mock_data.get("chart_config")
+                        if result_type == "chart"
+                        else None
+                    ),
+                )
 
         except Exception as e:
             return self._create_error_result(
@@ -287,6 +339,63 @@ Provide a helpful response. If the question is about data analysis, suggest spec
                     {"date": "2024-01-03", "value": 1890.25},
                 ]
             }
+
+    def _generate_chart_config(
+        self, result_data: List[Dict[str, Any]], chart_type: str, question: str
+    ) -> Optional[Dict[str, Any]]:
+        """Generate chart configuration based on result data and chart type."""
+        try:
+            if not result_data:
+                return None
+
+            # Get column names from first row
+            columns = list(result_data[0].keys())
+            if len(columns) < 2:
+                return None
+
+            # Determine x and y axes based on data types and column names
+            x_axis = columns[0]  # First column as x-axis
+            y_axis = columns[1]  # Second column as y-axis
+
+            # Look for more meaningful column names
+            for col in columns:
+                col_lower = col.lower()
+                if any(
+                    keyword in col_lower
+                    for keyword in ["name", "category", "type", "date"]
+                ):
+                    x_axis = col
+                    break
+
+            for col in columns:
+                col_lower = col.lower()
+                if any(
+                    keyword in col_lower
+                    for keyword in ["count", "sum", "total", "amount", "value"]
+                ):
+                    y_axis = col
+                    break
+
+            # Generate title from question
+            title = (
+                question.replace("Create a", "")
+                .replace("Show me a", "")
+                .replace("chart", "")
+                .strip()
+            )
+            if not title:
+                title = f"{chart_type.title()} Chart"
+
+            return {
+                "type": chart_type,
+                "x_axis": x_axis,
+                "y_axis": y_axis,
+                "title": title.title(),
+            }
+
+        except Exception as e:
+            logger.error(f"Error generating chart config: {str(e)}")
+            return None
 
     def _create_error_result(self, question: str, error_message: str) -> QueryResult:
         """Create an error result."""

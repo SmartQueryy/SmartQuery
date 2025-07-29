@@ -28,9 +28,17 @@ jobs:
       working-directory: ./frontend
       run: npm run type-check
     
-    - name: Run frontend tests
+    - name: Run frontend tests with coverage
       working-directory: ./frontend
-      run: npm run test
+      run: npm run test -- --coverage --watchAll=false
+    
+    - name: Upload frontend coverage
+      uses: codecov/codecov-action@v3
+      if: always()
+      with:
+        file: ./frontend/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
     
     - name: Build frontend
       working-directory: ./frontend
@@ -67,13 +75,23 @@ jobs:
       working-directory: ./backend
       run: isort --check-only --diff .
     
-    - name: Run backend tests
+    - name: Run backend tests with coverage
       working-directory: ./backend
-      run: pytest --cov=. --cov-report=xml
+      run: |
+        pytest --cov=. --cov-report=xml --cov-report=term --cov-fail-under=75
+        coverage report --fail-under=75
       env:
         TESTING: true
         DATABASE_URL: ${{ secrets.DATABASE_URL || 'sqlite:///test.db' }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'test-key' }}
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      if: always()
+      with:
+        file: ./backend/coverage.xml
+        flags: backend
+        name: backend-coverage
 
   # Integration Tests
   integration:
@@ -95,6 +113,29 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+      
+      minio:
+        image: minio/minio:latest
+        env:
+          MINIO_ROOT_USER: test-access-key
+          MINIO_ROOT_PASSWORD: test-secret-key
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live || exit 1"
+          --health-interval 30s
+          --health-timeout 20s
+          --health-retries 3
+        ports:
+          - 9000:9000
     
     steps:
     - name: Checkout code
@@ -123,14 +164,34 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
     
+    - name: Setup MinIO
+      run: |
+        # Wait for MinIO to be ready and create test bucket
+        timeout 60 bash -c 'until curl -f http://localhost:9000/minio/health/live; do sleep 2; done'
+        # Install MinIO client
+        curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o mc
+        chmod +x mc
+        sudo mv mc /usr/local/bin/
+        # Configure MinIO client
+        mc alias set minio http://localhost:9000 test-access-key test-secret-key
+        # Create test bucket
+        mc mb minio/smartquery-files || echo "Bucket already exists"
+    
     - name: Start backend server
       working-directory: ./backend
       run: |
         uvicorn main:app --host 0.0.0.0 --port 8000 &
-        sleep 10
+        sleep 15
       env:
         DATABASE_URL: postgresql://postgres:test@localhost:5432/smartquery_test
+        REDIS_URL: redis://localhost:6379
+        MINIO_ENDPOINT: localhost:9000
+        MINIO_ACCESS_KEY: test-access-key
+        MINIO_SECRET_KEY: test-secret-key
+        MINIO_BUCKET_NAME: smartquery-files
+        MINIO_SECURE: "false"
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'test-key' }}
+        TESTING: true
     
     - name: Run integration tests
       working-directory: ./frontend
@@ -140,7 +201,19 @@ jobs:
     
     - name: Health check
       run: |
+        # Check backend API
         curl -f http://localhost:8000/health || exit 1
+        
+        # Check PostgreSQL
+        pg_isready -h localhost -p 5432 -U postgres || exit 1
+        
+        # Check Redis
+        redis-cli -h localhost -p 6379 ping || exit 1
+        
+        # Check MinIO
+        curl -f http://localhost:9000/minio/health/live || exit 1
+        
+        echo "All services are healthy!"
 
   # Security Checks
   security:

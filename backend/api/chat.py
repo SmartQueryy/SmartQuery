@@ -16,8 +16,8 @@ from models.response_schemas import (
     SendMessageRequest,
     SendMessageResponse,
 )
-from services.project_service import get_project_service
 from services.langchain_service import langchain_service
+from services.project_service import get_project_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 project_service = get_project_service()
