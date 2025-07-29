@@ -9,6 +9,17 @@ export default defineConfig({
     env: {
       NEXT_PUBLIC_API_URL: 'http://localhost:8000',
     },
+    coverage: {
+      reporter: ['text', 'lcov', 'html'],
+      reportsDirectory: './coverage',
+      exclude: [
+        'node_modules/**',
+        'src/test/**',
+        '**/*.d.ts',
+        '**/*.config.*',
+        '**/coverage/**',
+      ],
+    },
   },
   resolve: {
     alias: {
