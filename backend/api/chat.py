@@ -1,7 +1,8 @@
+import logging
 import random
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -21,6 +22,7 @@ from services.project_service import get_project_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 project_service = get_project_service()
+logger = logging.getLogger(__name__)
 
 # Mock chat messages database
 MOCK_CHAT_MESSAGES = {}
@@ -378,9 +380,96 @@ async def get_csv_preview(
         if not project_obj:
             raise HTTPException(status_code=404, detail="Project not found")
         
-        # Generate preview from project metadata
-        if not project_obj.columns_metadata:
+        # Check if CSV file exists
+        if not project_obj.csv_path:
             raise HTTPException(status_code=404, detail="CSV preview not available")
+        
+        # Load actual CSV data from storage
+        preview = _load_csv_preview_from_storage(project_obj)
+        
+        if not preview:
+            # Fallback to metadata-based preview if file loading fails
+            preview = _generate_preview_from_metadata(project_obj)
+        
+        if not preview:
+            raise HTTPException(status_code=404, detail="CSV preview not available")
+        
+        return ApiResponse(success=True, data=preview)
+        
+    except HTTPException:
+        # Re-raise HTTPExceptions (like 404) as-is
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading CSV preview: {str(e)}")
+
+
+def _load_csv_preview_from_storage(project_obj) -> Optional[CSVPreview]:
+    """Load CSV preview from actual file in storage"""
+    try:
+        from services.storage_service import storage_service
+        import pandas as pd
+        import io
+        
+        # Download CSV file from storage
+        csv_bytes = storage_service.download_file(project_obj.csv_path)
+        if not csv_bytes:
+            return None
+        
+        # Read CSV into pandas DataFrame
+        csv_buffer = io.BytesIO(csv_bytes)
+        df = pd.read_csv(csv_buffer)
+        
+        # Get first 5 rows for preview
+        preview_df = df.head(5)
+        
+        # Extract column information
+        columns = list(df.columns)
+        sample_data = preview_df.values.tolist()
+        total_rows = len(df)
+        
+        # Determine data types
+        data_types = {}
+        for col in columns:
+            dtype = str(df[col].dtype)
+            if 'int' in dtype or 'float' in dtype:
+                data_types[col] = 'number'
+            elif 'datetime' in dtype or 'date' in dtype:
+                data_types[col] = 'date'
+            elif 'bool' in dtype:
+                data_types[col] = 'boolean'
+            else:
+                data_types[col] = 'string'
+        
+        # Convert any non-serializable values to strings
+        serializable_sample_data = []
+        for row in sample_data:
+            serializable_row = []
+            for value in row:
+                if pd.isna(value):
+                    serializable_row.append(None)
+                elif isinstance(value, (pd.Timestamp, pd.Timedelta)):
+                    serializable_row.append(str(value))
+                else:
+                    serializable_row.append(value)
+            serializable_sample_data.append(serializable_row)
+        
+        return CSVPreview(
+            columns=columns,
+            sample_data=serializable_sample_data,
+            total_rows=total_rows,
+            data_types=data_types
+        )
+        
+    except Exception as e:
+        logger.error(f"Error loading CSV preview from storage: {str(e)}")
+        return None
+
+
+def _generate_preview_from_metadata(project_obj) -> Optional[CSVPreview]:
+    """Generate preview from project metadata as fallback"""
+    try:
+        if not project_obj.columns_metadata:
+            return None
         
         # Extract column names and types
         columns = [col.get('name', '') for col in project_obj.columns_metadata]
@@ -405,20 +494,16 @@ async def get_csv_preview(
                         row.append(f"Sample {i+1}")
             sample_data.append(row)
         
-        preview = CSVPreview(
+        return CSVPreview(
             columns=columns,
             sample_data=sample_data,
             total_rows=project_obj.row_count or 0,
             data_types=data_types
         )
         
-        return ApiResponse(success=True, data=preview)
-        
-    except HTTPException:
-        # Re-raise HTTPExceptions (like 404) as-is
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error loading CSV preview: {str(e)}")
+        logger.error(f"Error generating preview from metadata: {str(e)}")
+        return None
 
 
 @router.get("/{project_id}/suggestions")
