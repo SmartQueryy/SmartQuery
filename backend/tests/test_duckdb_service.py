@@ -223,9 +223,14 @@ class TestDuckDBService:
         """Test successful query execution"""
         service = DuckDBService()
 
+        # Use valid UUIDs for testing
+        project_id = "12345678-1234-5678-9012-123456789012"
+        user_id = "87654321-4321-8765-2109-876543210987"
+
         # Mock project service
-        mock_project = {"id": "test-project", "csv_path": "test/data.csv"}
+        mock_project = {"id": project_id, "csv_path": "test/data.csv"}
         service.project_service = Mock()
+        service.project_service.check_project_ownership.return_value = True
         service.project_service.get_project_by_id.return_value = mock_project
 
         # Mock CSV loading
@@ -237,17 +242,19 @@ class TestDuckDBService:
         mock_execute_sql.return_value = mock_result
 
         result_data, execution_time, row_count = service.execute_query(
-            "SELECT * FROM data", "test-project", "test-user"
+            "SELECT * FROM data", project_id, user_id
         )
 
         assert result_data == mock_result
         assert execution_time > 0
         assert row_count == 1
 
-        # Verify method calls
-        service.project_service.get_project_by_id.assert_called_once_with(
-            "test-project", "test-user"
+        # Verify method calls with UUID objects
+        from uuid import UUID
+        service.project_service.check_project_ownership.assert_called_once_with(
+            UUID(project_id), UUID(user_id)
         )
+        service.project_service.get_project_by_id.assert_called_once_with(UUID(project_id))
         mock_load_csv.assert_called_once_with(mock_project)
         mock_execute_sql.assert_called_once_with("SELECT * FROM data", test_df)
 
@@ -269,16 +276,21 @@ class TestDuckDBService:
         """Test query execution with CSV data not available"""
         service = DuckDBService()
 
+        # Use valid UUIDs for testing
+        project_id = "12345678-1234-5678-9012-123456789012"
+        user_id = "87654321-4321-8765-2109-876543210987"
+
         # Mock project service
-        mock_project = {"id": "test-project"}
+        mock_project = {"id": project_id}
         service.project_service = Mock()
+        service.project_service.check_project_ownership.return_value = True
         service.project_service.get_project_by_id.return_value = mock_project
 
         # Mock CSV loading failure
         mock_load_csv.return_value = None
 
-        with pytest.raises(Exception) as exc_info:
-            service.execute_query("SELECT * FROM data", "test-project", "test-user")
+        with pytest.raises(ValueError) as exc_info:
+            service.execute_query("SELECT * FROM data", project_id, user_id)
 
         assert "CSV data not available" in str(exc_info.value)
 

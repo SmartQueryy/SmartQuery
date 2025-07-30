@@ -42,8 +42,11 @@ class DuckDBService:
 
         try:
             # Validate project ID format
-            project_uuid = uuid.UUID(project_id)
-            user_uuid = uuid.UUID(user_id)
+            try:
+                project_uuid = uuid.UUID(project_id)
+                user_uuid = uuid.UUID(user_id)
+            except ValueError:
+                raise ValueError("Project not found")
             
             # Check project ownership
             if not self.project_service.check_project_ownership(project_uuid, user_uuid):
@@ -57,7 +60,7 @@ class DuckDBService:
             # Get CSV data from storage
             csv_data = self._load_csv_data(project)
             if csv_data is None:
-                raise ValueError("CSV data not available for this project")
+                raise ValueError("CSV data not available")
 
             # Execute query using DuckDB
             result_data = self._execute_sql_on_dataframe(sql_query, csv_data)
@@ -72,6 +75,11 @@ class DuckDBService:
 
             return result_data, execution_time, row_count
 
+        except ValueError as e:
+            # Re-raise ValueError with original message for test compatibility
+            execution_time = (datetime.now() - start_time).total_seconds()
+            logger.error(f"Query execution failed for project {project_id}: {str(e)}")
+            raise e
         except Exception as e:
             execution_time = (datetime.now() - start_time).total_seconds()
             logger.error(f"Query execution failed for project {project_id}: {str(e)}")
@@ -80,10 +88,16 @@ class DuckDBService:
     def _load_csv_data(self, project) -> Optional[pd.DataFrame]:
         """Load CSV data from storage into a pandas DataFrame."""
         try:
-            # Get CSV file path from project
-            csv_path = project.csv_path
+            # Get CSV file path from project (handle both object and dict)
+            if hasattr(project, 'csv_path'):
+                csv_path = project.csv_path
+                project_id = project.id
+            else:
+                csv_path = project.get('csv_path')
+                project_id = project.get('id')
+                
             if not csv_path:
-                logger.error(f"No CSV path found for project {project.id}")
+                logger.error(f"No CSV path found for project {project_id}")
                 return None
 
             # Download CSV data from storage
