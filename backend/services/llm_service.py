@@ -1,7 +1,8 @@
 import os
+
+from langchain.agents import AgentType, Tool, initialize_agent
 from langchain.llms import OpenAI
-from langchain.agents import initialize_agent, Tool
-from langchain.agents import AgentType
+
 
 class LLMService:
     """Service for managing LangChain LLM agent for query processing."""
@@ -24,5 +25,6 @@ class LLMService:
         """Run the agent with a given prompt and return the response."""
         return self.agent.run(prompt)
 
+
 # Singleton instance for import
-llm_service = LLMService() 
+llm_service = LLMService()

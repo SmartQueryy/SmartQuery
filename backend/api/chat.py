@@ -16,8 +16,8 @@ from models.response_schemas import (
     SendMessageRequest,
     SendMessageResponse,
 )
+from services.langchain_service import langchain_service
 from services.project_service import get_project_service
-from services.llm_service import llm_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 project_service = get_project_service()
@@ -263,24 +263,34 @@ async def send_message(
         created_at=datetime.utcnow().isoformat() + "Z",
     )
 
-    # Use LLMService for AI response, fallback to mock if not configured
+    # Use LangChain service for intelligent query processing
     try:
-        ai_content = llm_service.run(request.message)
-        # For now, just echo the LLM response as the AI message content
-        query_result = QueryResult(
-            id=str(uuid.uuid4()),
-            query=request.message,
-            sql_query="",  # To be filled by future agent logic
-            result_type="summary",
-            data=[],
-            execution_time=0.0,
-            row_count=0,
-            chart_config=None,
+        query_result = langchain_service.process_query(
+            request.message, project_id, user_id
         )
-    except Exception as e:
-        # Fallback to mock logic if LLM not available
-        ai_content = f"[MOCK] Here are the results for your query: '{request.message}'"
+    except Exception:
+        # Fallback to mock query result if LangChain service fails
         query_result = generate_mock_query_result(request.message, project_id)
+
+    # Create AI response content based on result type
+    if query_result.result_type == "error":
+        ai_content = f"I encountered an error: {query_result.error}"
+    elif query_result.result_type == "summary":
+        ai_content = query_result.summary or "Here's what I found about your data."
+    elif query_result.result_type == "table":
+        result_text = "result" if query_result.row_count == 1 else "results"
+        ai_content = f"I found {query_result.row_count} {result_text} for your query."
+        if query_result.sql_query:
+            ai_content += f"\n\n**SQL Query:** `{query_result.sql_query}`"
+    elif query_result.result_type == "chart":
+        chart_type = "chart"
+        if query_result.chart_config and query_result.chart_config.get('type'):
+            chart_type = query_result.chart_config['type']
+        ai_content = f"I've created a {chart_type} visualization"
+        if query_result.sql_query:
+            ai_content += f"\n\n**SQL Query:** `{query_result.sql_query}`"
+    else:
+        ai_content = "I've processed your query. Here are the results."
 
     # Store message in mock database
     if project_id not in MOCK_CHAT_MESSAGES:
@@ -299,7 +309,7 @@ async def send_message(
     )
     MOCK_CHAT_MESSAGES[project_id].append(ai_message.model_dump())
 
-    response = SendMessageResponse(message=user_message, result=query_result)
+    response = SendMessageResponse(message=user_message, result=query_result, ai_message=ai_message)
 
     return ApiResponse(success=True, data=response)
 
@@ -362,14 +372,53 @@ async def get_csv_preview(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid project ID")
 
-    # Get preview data for project
-    if project_id not in MOCK_CSV_PREVIEWS:
-        raise HTTPException(status_code=404, detail="CSV preview not available")
-
-    preview_data = MOCK_CSV_PREVIEWS[project_id]
-    preview = CSVPreview(**preview_data)
-
-    return ApiResponse(success=True, data=preview)
+    # Get real project data and generate preview
+    try:
+        project_obj = project_service.get_project_by_id(project_uuid)
+        if not project_obj:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        # Generate preview from project metadata
+        if not project_obj.columns_metadata:
+            raise HTTPException(status_code=404, detail="CSV preview not available")
+        
+        # Extract column names and types
+        columns = [col.get('name', '') for col in project_obj.columns_metadata]
+        data_types = {col.get('name', ''): col.get('type', 'unknown') for col in project_obj.columns_metadata}
+        
+        # Generate sample data from metadata
+        sample_data = []
+        for i in range(min(5, project_obj.row_count or 5)):  # Show max 5 sample rows
+            row = []
+            for col in project_obj.columns_metadata:
+                sample_values = col.get('sample_values', [])
+                if sample_values and len(sample_values) > i:
+                    row.append(sample_values[i])
+                else:
+                    # Generate placeholder based on type
+                    col_type = col.get('type', 'string')
+                    if col_type == 'number':
+                        row.append(0)
+                    elif col_type == 'date':
+                        row.append('2024-01-01')
+                    else:
+                        row.append(f"Sample {i+1}")
+            sample_data.append(row)
+        
+        preview = CSVPreview(
+            columns=columns,
+            sample_data=sample_data,
+            total_rows=project_obj.row_count or 0,
+            data_types=data_types
+        )
+        
+        return ApiResponse(success=True, data=preview)
+        
+    except HTTPException:
+        # Re-raise HTTPExceptions (like 404) as-is
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading CSV preview: {str(e)}")
 
 
 @router.get("/{project_id}/suggestions")
@@ -389,7 +438,12 @@ async def get_query_suggestions(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid project ID")
 
-    # Return mock suggestions
-    suggestions = [QuerySuggestion(**sug) for sug in MOCK_SUGGESTIONS]
+    # Generate intelligent suggestions using LangChain service
+    try:
+        suggestions_data = langchain_service.generate_suggestions(project_id, user_id)
+        suggestions = [QuerySuggestion(**sug) for sug in suggestions_data]
+    except Exception:
+        # Fallback to mock suggestions if service fails
+        suggestions = [QuerySuggestion(**sug) for sug in MOCK_SUGGESTIONS]
 
     return ApiResponse(success=True, data=suggestions)

@@ -201,12 +201,14 @@ class QueryResult(BaseModel):
 
     id: str
     query: str
-    sql_query: str
-    result_type: str  # 'table', 'chart', 'summary'
-    data: List[Dict[str, Any]]
+    sql_query: Optional[str] = None
+    result_type: str  # 'table', 'chart', 'summary', 'error'
+    data: Optional[List[Dict[str, Any]]] = None
     execution_time: float
-    row_count: int
+    row_count: Optional[int] = None
     chart_config: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    summary: Optional[str] = None
 
 
 class SendMessageResponse(BaseModel):
@@ -214,6 +216,7 @@ class SendMessageResponse(BaseModel):
 
     message: ChatMessage
     result: QueryResult
+    ai_message: Optional[ChatMessage] = None
 
 
 class CSVPreview(BaseModel):
