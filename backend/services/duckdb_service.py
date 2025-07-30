@@ -1,5 +1,6 @@
 import io
 import logging
+import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -40,10 +41,18 @@ class DuckDBService:
         start_time = datetime.now()
 
         try:
-            # Get project information
-            project = self.project_service.get_project_by_id(project_id, user_id)
-            if not project:
+            # Validate project ID format
+            project_uuid = uuid.UUID(project_id)
+            user_uuid = uuid.UUID(user_id)
+            
+            # Check project ownership
+            if not self.project_service.check_project_ownership(project_uuid, user_uuid):
                 raise ValueError("Project not found or access denied")
+            
+            # Get project information
+            project = self.project_service.get_project_by_id(project_uuid)
+            if not project:
+                raise ValueError("Project not found")
 
             # Get CSV data from storage
             csv_data = self._load_csv_data(project)
@@ -68,13 +77,13 @@ class DuckDBService:
             logger.error(f"Query execution failed for project {project_id}: {str(e)}")
             raise Exception(f"Query execution failed: {str(e)}")
 
-    def _load_csv_data(self, project: Dict[str, Any]) -> Optional[pd.DataFrame]:
+    def _load_csv_data(self, project) -> Optional[pd.DataFrame]:
         """Load CSV data from storage into a pandas DataFrame."""
         try:
             # Get CSV file path from project
-            csv_path = project.get("csv_path")
+            csv_path = project.csv_path
             if not csv_path:
-                logger.error(f"No CSV path found for project {project.get('id')}")
+                logger.error(f"No CSV path found for project {project.id}")
                 return None
 
             # Download CSV data from storage
@@ -191,8 +200,8 @@ class DuckDBService:
             # Validate syntax using DuckDB (dry run)
             try:
                 conn = duckdb.connect(":memory:")
-                # Create a dummy table for syntax validation
-                conn.execute("CREATE TABLE data AS SELECT 1 as id, 'test' as name")
+                # Create a dummy table for syntax validation with common columns
+                conn.execute("CREATE TABLE data AS SELECT 1 as id, 'test' as name, 25 as age, 'category' as category, 100.0 as amount")
                 # Prepare the query (this validates syntax without executing)
                 conn.execute(f"EXPLAIN {sql_query}")
                 conn.close()
