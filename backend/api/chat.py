@@ -264,25 +264,29 @@ async def send_message(
     )
 
     # Use LangChain service for intelligent query processing
-    query_result = langchain_service.process_query(
-        request.message, project_id, user_id
-    )
+    try:
+        query_result = langchain_service.process_query(
+            request.message, project_id, user_id
+        )
+    except Exception:
+        # Fallback to mock query result if LangChain service fails
+        query_result = generate_mock_query_result(request.message, project_id)
 
     # Create AI response content based on result type
     if query_result.result_type == "error":
-        ai_content = f"I encountered an error while processing your query: {query_result.error}"
+        ai_content = f"I encountered an error: {query_result.error}"
     elif query_result.result_type == "summary":
         ai_content = query_result.summary or "Here's what I found about your data."
     elif query_result.result_type == "table":
-        row_text = "row" if query_result.row_count == 1 else "rows"
-        ai_content = f"I found {query_result.row_count} {row_text} that match your query."
+        result_text = "result" if query_result.row_count == 1 else "results"
+        ai_content = f"I found {query_result.row_count} {result_text} for your query."
         if query_result.sql_query:
             ai_content += f"\n\n**SQL Query:** `{query_result.sql_query}`"
     elif query_result.result_type == "chart":
         chart_type = "chart"
         if query_result.chart_config and query_result.chart_config.get('type'):
             chart_type = query_result.chart_config['type']
-        ai_content = f"I've created a {chart_type} visualization for your data."
+        ai_content = f"I've created a {chart_type} visualization"
         if query_result.sql_query:
             ai_content += f"\n\n**SQL Query:** `{query_result.sql_query}`"
     else:
@@ -305,7 +309,7 @@ async def send_message(
     )
     MOCK_CHAT_MESSAGES[project_id].append(ai_message.model_dump())
 
-    response = SendMessageResponse(message=user_message, result=query_result)
+    response = SendMessageResponse(message=user_message, result=query_result, ai_message=ai_message)
 
     return ApiResponse(success=True, data=response)
 
@@ -376,7 +380,7 @@ async def get_csv_preview(
         
         # Generate preview from project metadata
         if not project_obj.columns_metadata:
-            raise HTTPException(status_code=404, detail="CSV data not processed yet")
+            raise HTTPException(status_code=404, detail="CSV preview not available")
         
         # Extract column names and types
         columns = [col.get('name', '') for col in project_obj.columns_metadata]
@@ -410,6 +414,9 @@ async def get_csv_preview(
         
         return ApiResponse(success=True, data=preview)
         
+    except HTTPException:
+        # Re-raise HTTPExceptions (like 404) as-is
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error loading CSV preview: {str(e)}")
 
@@ -432,7 +439,11 @@ async def get_query_suggestions(
         raise HTTPException(status_code=400, detail="Invalid project ID")
 
     # Generate intelligent suggestions using LangChain service
-    suggestions_data = langchain_service.generate_suggestions(project_id, user_id)
-    suggestions = [QuerySuggestion(**sug) for sug in suggestions_data]
+    try:
+        suggestions_data = langchain_service.generate_suggestions(project_id, user_id)
+        suggestions = [QuerySuggestion(**sug) for sug in suggestions_data]
+    except Exception:
+        # Fallback to mock suggestions if service fails
+        suggestions = [QuerySuggestion(**sug) for sug in MOCK_SUGGESTIONS]
 
     return ApiResponse(success=True, data=suggestions)

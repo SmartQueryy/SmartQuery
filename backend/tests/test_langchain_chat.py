@@ -143,9 +143,10 @@ class TestLangChainChatIntegration:
         """Test SQL query processing through LangChain"""
         app.dependency_overrides[verify_token] = mock_verify_token
 
-        with patch("services.langchain_service.langchain_service") as mock_service:
+        with patch("api.chat.langchain_service") as mock_service:
             # Mock LangChain service response
-            mock_service.process_query.return_value = Mock(
+            from models.response_schemas import QueryResult
+            mock_service.process_query.return_value = QueryResult(
                 id="qr_test_123",
                 query="Show me total sales by product",
                 sql_query="SELECT product_name, SUM(sales_amount) as total_sales FROM data GROUP BY product_name ORDER BY total_sales DESC",
@@ -196,9 +197,10 @@ class TestLangChainChatIntegration:
         """Test chart query processing through LangChain"""
         app.dependency_overrides[verify_token] = mock_verify_token
 
-        with patch("services.langchain_service.langchain_service") as mock_service:
+        with patch("api.chat.langchain_service") as mock_service:
             # Mock chart response
-            mock_service.process_query.return_value = Mock(
+            from models.response_schemas import QueryResult
+            mock_service.process_query.return_value = QueryResult(
                 id="qr_chart_123",
                 query="Create a bar chart of sales by category",
                 sql_query="SELECT category, SUM(sales_amount) as total_sales FROM data GROUP BY category",
@@ -249,9 +251,10 @@ class TestLangChainChatIntegration:
         """Test general query processing through LangChain"""
         app.dependency_overrides[verify_token] = mock_verify_token
 
-        with patch("services.langchain_service.langchain_service") as mock_service:
+        with patch("api.chat.langchain_service") as mock_service:
             # Mock general response
-            mock_service.process_query.return_value = Mock(
+            from models.response_schemas import QueryResult
+            mock_service.process_query.return_value = QueryResult(
                 id="qr_general_123",
                 query="What can you tell me about this dataset?",
                 sql_query=None,
@@ -292,7 +295,7 @@ class TestLangChainChatIntegration:
         """Test error handling with fallback to mock data"""
         app.dependency_overrides[verify_token] = mock_verify_token
 
-        with patch("services.langchain_service.langchain_service") as mock_service:
+        with patch("api.chat.langchain_service") as mock_service:
             # Mock service error
             mock_service.process_query.side_effect = Exception(
                 "LangChain service unavailable"
@@ -327,7 +330,7 @@ class TestLangChainChatIntegration:
         """Test intelligent suggestions generation"""
         app.dependency_overrides[verify_token] = mock_verify_token
 
-        with patch("services.langchain_service.langchain_service") as mock_service:
+        with patch("api.chat.langchain_service") as mock_service:
             # Mock intelligent suggestions
             mock_service.generate_suggestions.return_value = [
                 {
@@ -348,6 +351,18 @@ class TestLangChainChatIntegration:
                     "category": "visualization",
                     "complexity": "intermediate",
                 },
+                {
+                    "id": "sug_overview",
+                    "text": "Give me an overview of this dataset",
+                    "category": "summary",
+                    "complexity": "beginner",
+                },
+                {
+                    "id": "sug_top_values",
+                    "text": "Show me the top 10 rows",
+                    "category": "analysis",
+                    "complexity": "beginner",
+                },
             ]
 
             try:
@@ -359,7 +374,7 @@ class TestLangChainChatIntegration:
                 assert response.status_code == 200
                 data = response.json()
                 assert data["success"] is True
-                assert len(data["data"]) == 3
+                assert len(data["data"]) == 5
 
                 suggestions = data["data"]
                 assert suggestions[0]["text"] == "Show me the total sales_amount"
@@ -382,7 +397,7 @@ class TestLangChainChatIntegration:
         """Test suggestions fallback to mock data"""
         app.dependency_overrides[verify_token] = mock_verify_token
 
-        with patch("services.langchain_service.langchain_service") as mock_service:
+        with patch("api.chat.langchain_service") as mock_service:
             # Mock service error for suggestions
             mock_service.generate_suggestions.side_effect = Exception("Service error")
 
@@ -433,8 +448,11 @@ class TestLangChainChatIntegration:
         ]
 
         for case in test_cases:
-            with patch("services.langchain_service.langchain_service") as mock_service:
-                mock_result = Mock(
+            with patch("api.chat.langchain_service") as mock_service:
+                from models.response_schemas import QueryResult
+                mock_result = QueryResult(
+                    id="test_query_id",
+                    query="Test query",
                     result_type=case["result_type"],
                     row_count=2 if case["result_type"] == "table" else 0,
                     chart_config=(
@@ -453,6 +471,8 @@ class TestLangChainChatIntegration:
                         if case["result_type"] in ["table", "chart"]
                         else None
                     ),
+                    execution_time=0.1,
+                    data=None,
                 )
                 mock_service.process_query.return_value = mock_result
 
@@ -465,7 +485,7 @@ class TestLangChainChatIntegration:
 
                     assert response.status_code == 200
                     data = response.json()
-                    ai_message = data["data"]["message"]
+                    ai_message = data["data"]["ai_message"]
 
                     # Check AI response content contains expected text
                     assert case["expected_content"].split()[0] in ai_message["content"]

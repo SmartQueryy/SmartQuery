@@ -216,6 +216,7 @@ class SendMessageResponse(BaseModel):
 
     message: ChatMessage
     result: QueryResult
+    ai_message: Optional[ChatMessage] = None
 
 
 class CSVPreview(BaseModel):
