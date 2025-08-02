@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from models.response_schemas import QueryResult
 from services.duckdb_service import duckdb_service
 from services.embeddings_service import get_embeddings_service
+from services.suggestions_service import get_suggestions_service
 from services.project_service import get_project_service
 from services.storage_service import storage_service
 
@@ -462,96 +463,12 @@ Provide a helpful response using the relevant dataset information above. If the 
     def generate_suggestions(
         self, project_id: str, user_id: str
     ) -> List[Dict[str, Any]]:
-        """Generate query suggestions based on project data."""
+        """Generate query suggestions using the dedicated suggestions service."""
         try:
-            # Use mock project data for now
-            project = {
-                "columns_metadata": [
-                    {"name": "sales_amount", "type": "number"},
-                    {"name": "category", "type": "string"},
-                    {"name": "date", "type": "date"},
-                ]
-            }
-
-            # Generate suggestions based on column types
-            suggestions = []
-            metadata = project.get("columns_metadata", [])
-
-            # Find numeric columns for aggregation suggestions
-            numeric_cols = [
-                col["name"]
-                for col in metadata
-                if col.get("type") in ["number", "integer", "float"]
-            ]
-            categorical_cols = [
-                col["name"] for col in metadata if col.get("type") == "string"
-            ]
-            date_cols = [
-                col["name"]
-                for col in metadata
-                if col.get("type") in ["date", "datetime"]
-            ]
-
-            if numeric_cols:
-                suggestions.append(
-                    {
-                        "id": f"sug_sum_{numeric_cols[0]}",
-                        "text": f"Show me the total {numeric_cols[0]}",
-                        "category": "analysis",
-                        "complexity": "beginner",
-                    }
-                )
-
-                if categorical_cols:
-                    suggestions.append(
-                        {
-                            "id": f"sug_group_{categorical_cols[0]}",
-                            "text": f"Break down {numeric_cols[0]} by {categorical_cols[0]}",
-                            "category": "analysis",
-                            "complexity": "intermediate",
-                        }
-                    )
-
-                    suggestions.append(
-                        {
-                            "id": f"sug_chart_{categorical_cols[0]}",
-                            "text": f"Create a bar chart of {numeric_cols[0]} by {categorical_cols[0]}",
-                            "category": "visualization",
-                            "complexity": "intermediate",
-                        }
-                    )
-
-            if date_cols and numeric_cols:
-                suggestions.append(
-                    {
-                        "id": f"sug_trend_{date_cols[0]}",
-                        "text": f"Show {numeric_cols[0]} trend over {date_cols[0]}",
-                        "category": "visualization",
-                        "complexity": "intermediate",
-                    }
-                )
-
-            # Add general suggestions
-            suggestions.extend(
-                [
-                    {
-                        "id": "sug_overview",
-                        "text": "Give me an overview of this dataset",
-                        "category": "summary",
-                        "complexity": "beginner",
-                    },
-                    {
-                        "id": "sug_top_values",
-                        "text": "Show me the top 10 rows",
-                        "category": "analysis",
-                        "complexity": "beginner",
-                    },
-                ]
-            )
-
-            return suggestions[:5]  # Return top 5 suggestions
-
+            suggestions_service = get_suggestions_service()
+            return suggestions_service.generate_suggestions(project_id, user_id)
         except Exception as e:
+            logger.error(f"Error generating suggestions via service: {str(e)}")
             return []
     
     def _ensure_project_embeddings(self, project_id: str, user_id: str):
