@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from models.response_schemas import QueryResult
 from services.duckdb_service import duckdb_service
+from services.embeddings_service import get_embeddings_service
 from services.project_service import get_project_service
 from services.storage_service import storage_service
 
@@ -198,6 +199,9 @@ class LangChainService:
             # Get schema information
             schema_info = self._get_schema_info(project)
 
+            # Generate embeddings for the project if not already done
+            self._ensure_project_embeddings(project_id, user_id)
+            
             # Classify query type
             query_type = self.classifier_tool.run(question)
 
@@ -206,7 +210,7 @@ class LangChainService:
                     question, schema_info, query_type, project_id, user_id
                 )
             else:
-                return self._process_general_query(question, project)
+                return self._process_general_query(question, project, project_id, user_id)
 
         except Exception as e:
             return self._create_error_result(
@@ -296,27 +300,48 @@ Question: {question}
             )
 
     def _process_general_query(
-        self, question: str, project: Dict[str, Any]
+        self, question: str, project: Dict[str, Any], project_id: str, user_id: str
     ) -> QueryResult:
-        """Process general chat queries."""
+        """Process general chat queries with semantic search enhancement."""
         try:
+            # Perform semantic search to find relevant context
+            embeddings_service = get_embeddings_service()
+            semantic_results = embeddings_service.semantic_search(
+                project_id, user_id, question, top_k=3
+            )
+            
+            # Build context from semantic search results
+            context_parts = []
+            if semantic_results:
+                context_parts.append("Relevant information from your dataset:")
+                for result in semantic_results:
+                    context_parts.append(f"- {result['text']} (similarity: {result['similarity']:.2f})")
+            
             # Use LLM for general responses if available
             if self.llm:
+                context_str = "\n".join(context_parts) if context_parts else ""
+                
                 prompt = f"""
 You are a helpful data analyst assistant. The user has a CSV dataset with {project.get('row_count', 'unknown')} rows and {project.get('column_count', 'unknown')} columns.
 
 Dataset: {project.get('name', 'Unnamed dataset')}
 
+{context_str}
+
 User question: {question}
 
-Provide a helpful response. If the question is about data analysis, suggest specific queries they could try.
+Provide a helpful response using the relevant dataset information above. If the question is about data analysis, suggest specific queries they could try based on the available columns and data.
 """
 
                 response = self.llm.invoke([HumanMessage(content=prompt)])
                 summary = response.content
             else:
                 # Fallback response when LLM is not available
-                summary = f"I can help you analyze your dataset '{project.get('name', 'your data')}' with {project.get('row_count', 'unknown')} rows and {project.get('column_count', 'unknown')} columns. Try asking specific questions about your data!"
+                if semantic_results:
+                    relevant_info = semantic_results[0]['text']
+                    summary = f"Based on your dataset, I found this relevant information: {relevant_info}. I can help you analyze your dataset '{project.get('name', 'your data')}' with {project.get('row_count', 'unknown')} rows and {project.get('column_count', 'unknown')} columns."
+                else:
+                    summary = f"I can help you analyze your dataset '{project.get('name', 'your data')}' with {project.get('row_count', 'unknown')} rows and {project.get('column_count', 'unknown')} columns. Try asking specific questions about your data!"
 
             return QueryResult(
                 id=f"qr_general_{hash(question) % 10000}",
@@ -528,6 +553,27 @@ Provide a helpful response. If the question is about data analysis, suggest spec
 
         except Exception as e:
             return []
+    
+    def _ensure_project_embeddings(self, project_id: str, user_id: str):
+        """Ensure embeddings exist for a project, generate if needed"""
+        try:
+            # Check if embeddings already exist
+            embeddings_service = get_embeddings_service()
+            stats = embeddings_service.get_embedding_stats(project_id, user_id)
+            
+            if stats.get("embedding_count", 0) == 0:
+                # Generate embeddings if they don't exist
+                logger.info(f"Generating embeddings for project {project_id}")
+                success = embeddings_service.generate_project_embeddings(project_id, user_id)
+                if success:
+                    logger.info(f"Successfully generated embeddings for project {project_id}")
+                else:
+                    logger.warning(f"Failed to generate embeddings for project {project_id}")
+            else:
+                logger.debug(f"Embeddings already exist for project {project_id} ({stats['embedding_count']} embeddings)")
+                
+        except Exception as e:
+            logger.error(f"Error ensuring project embeddings: {str(e)}")
 
 
 # Singleton instance
