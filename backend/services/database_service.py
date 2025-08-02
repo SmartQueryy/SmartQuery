@@ -6,6 +6,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from models.base import Base
+from middleware.monitoring import track_performance
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,7 @@ class DatabaseService:
         """Force a reconnection to the database."""
         self.connect()
 
+    @track_performance("database_health_check")
     def health_check(self) -> Dict[str, Any]:
         """Check database health"""
         try:

@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import duckdb
 import pandas as pd
 
+from middleware.monitoring import track_performance
 from services.project_service import get_project_service
 from services.storage_service import storage_service
 
@@ -20,6 +21,7 @@ class DuckDBService:
         self.project_service = get_project_service()
         self.storage_service = storage_service
 
+    @track_performance("duckdb_sql_execution")
     def execute_query(
         self, sql_query: str, project_id: str, user_id: str
     ) -> Tuple[List[Dict[str, Any]], float, int]:
@@ -47,11 +49,13 @@ class DuckDBService:
                 user_uuid = uuid.UUID(user_id)
             except ValueError:
                 raise ValueError("Project not found")
-            
+
             # Check project ownership
-            if not self.project_service.check_project_ownership(project_uuid, user_uuid):
+            if not self.project_service.check_project_ownership(
+                project_uuid, user_uuid
+            ):
                 raise ValueError("Project not found or access denied")
-            
+
             # Get project information
             project = self.project_service.get_project_by_id(project_uuid)
             if not project:
@@ -89,13 +93,13 @@ class DuckDBService:
         """Load CSV data from storage into a pandas DataFrame."""
         try:
             # Get CSV file path from project (handle both object and dict)
-            if hasattr(project, 'csv_path'):
+            if hasattr(project, "csv_path"):
                 csv_path = project.csv_path
                 project_id = project.id
             else:
-                csv_path = project.get('csv_path')
-                project_id = project.get('id')
-                
+                csv_path = project.get("csv_path")
+                project_id = project.get("id")
+
             if not csv_path:
                 logger.error(f"No CSV path found for project {project_id}")
                 return None
@@ -215,7 +219,9 @@ class DuckDBService:
             try:
                 conn = duckdb.connect(":memory:")
                 # Create a dummy table for syntax validation with common columns
-                conn.execute("CREATE TABLE data AS SELECT 1 as id, 'test' as name, 25 as age, 'category' as category, 100.0 as amount")
+                conn.execute(
+                    "CREATE TABLE data AS SELECT 1 as id, 'test' as name, 25 as age, 'category' as category, 100.0 as amount"
+                )
                 # Prepare the query (this validates syntax without executing)
                 conn.execute(f"EXPLAIN {sql_query}")
                 conn.close()

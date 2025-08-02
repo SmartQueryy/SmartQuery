@@ -12,6 +12,7 @@ from api.chat import router as chat_router
 from api.health import router as health_router
 from api.middleware.cors import setup_cors
 from api.projects import router as projects_router
+from middleware.monitoring import PerformanceMonitoringMiddleware
 
 # Create FastAPI application
 app = FastAPI(
@@ -24,6 +25,9 @@ app = FastAPI(
 
 # Setup CORS middleware
 setup_cors(app)
+
+# Add performance monitoring middleware
+app.add_middleware(PerformanceMonitoringMiddleware)
 
 # Include routers
 app.include_router(health_router)
