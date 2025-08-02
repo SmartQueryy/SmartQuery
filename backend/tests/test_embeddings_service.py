@@ -173,7 +173,7 @@ class TestEmbeddingsService:
                 "embedding": [0.1, 0.1, 0.1]  # Lower similarity
             }
         ]
-        service._get_project_embeddings = Mock(return_value=stored_embeddings)
+        service._get_project_embeddings_raw = Mock(return_value=stored_embeddings)
         
         results = service.semantic_search("12345678-1234-5678-9012-123456789012", "87654321-4321-8765-2109-876543210987", "sales data", top_k=2)
         
