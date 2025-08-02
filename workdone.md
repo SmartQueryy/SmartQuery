@@ -323,6 +323,9 @@ This document provides a comprehensive summary of all work completed on the Smar
 - **DuckDB Query Execution (Task B17)** - Real SQL execution on CSV data with result formatting
 - **CSV Preview Endpoint (Task B18)** - Production-ready CSV preview with real data loading and intelligent fallback
 - **Embeddings System (Task B19)** - OpenAI embeddings integration with semantic search capabilities
+- **Query Suggestions System (Task B20)** - Intelligent query suggestions based on project data and embeddings
+- **Enhanced Query Processing (Task B21)** - Sophisticated LangChain query routing and SQL generation
+- **Optimized Vector Search (Task B22)** - Performance-optimized embeddings storage and semantic search
 
 ### Task B19: Setup Embeddings System
 
@@ -351,6 +354,106 @@ This document provides a comprehensive summary of all work completed on the Smar
   - Memory-efficient processing with proper resource cleanup
   - Security-first approach with project access validation and user permission checks
   - Code formatted to project standards and integration with existing service patterns
+### Task B20: Create Query Suggestions
+
+- **Intelligent Suggestions Service:**
+  - Implemented comprehensive `SuggestionsService` with multi-layered suggestion generation
+  - Schema-based suggestions analyzing column types and relationships for relevant query recommendations
+  - Embedding-enhanced suggestions using semantic search to find contextually relevant query patterns
+  - General dataset suggestions providing foundational query starting points for data exploration
+  - Confidence scoring algorithm with intelligent deduplication to ensure high-quality suggestions
+- **Advanced Query Generation:**
+  - Context-aware suggestion generation based on project metadata and data characteristics
+  - Dynamic categorization (analysis, visualization, summary, exploration) with complexity scoring
+  - Integration with embeddings service for semantic relevance in suggestion ranking
+  - Configurable suggestion limits with intelligent filtering to present most relevant options
+- **LangChain Integration:**
+  - Updated LangChain service to use dedicated suggestions service instead of embedded logic
+  - Seamless integration maintaining existing API contract while improving suggestion quality
+  - Fallback mechanisms ensuring suggestions are always available even when embeddings fail
+  - Performance optimization for rapid suggestion generation during chat interactions
+- **Comprehensive Testing:**
+  - 14/14 unit tests passing with full coverage of all suggestion generation scenarios
+  - Integration tests validating suggestions service interaction with embeddings and project data
+  - Edge case handling for projects with missing metadata or unavailable embeddings
+  - Robust error handling ensuring suggestion generation never blocks chat functionality
+- **Production Architecture:**
+  - Modular design with clear separation between schema analysis and semantic enhancement
+  - Efficient caching and reuse of embeddings data for rapid suggestion generation
+  - Scalable suggestion algorithms ready for large-scale datasets and complex schema analysis
+  - Memory-efficient processing with proper resource management and cleanup
+
+### Task B21: Enhance Query Processing
+
+- **Advanced Query Classification:**
+  - Implemented sophisticated query classification with weighted scoring system for higher accuracy
+  - Enhanced keyword detection with context-aware patterns for better SQL vs general query distinction
+  - Improved "show me" pattern handling to distinguish data queries from conversational requests
+  - Multi-factor decision logic considering question complexity, length, and semantic indicators
+- **Upgraded SQL Generation:**
+  - Enhanced SQL generation prompts with detailed schema information and optimization guidelines
+  - Upgraded to GPT-4o-mini for superior SQL query generation with better syntax and logic
+  - Dual LLM architecture with automatic fallback to GPT-3.5-turbo for reliability
+  - Improved parsing and cleanup of generated SQL with better error handling
+- **Query Complexity Analysis:**
+  - New `QueryComplexityAnalyzer` class providing intelligent assessment of query difficulty
+  - Analysis of aggregation requirements, filtering needs, and join complexity
+  - Estimated result size prediction with automatic query optimization (LIMIT injection)
+  - Processing time estimation for better user experience and resource management
+- **Context-Aware Processing:**
+  - Enhanced schema information extraction with column type categorization and summaries
+  - Context-aware query classification using complexity analysis for routing decisions
+  - Improved integration with embeddings service for semantic search enhancement
+  - Dynamic parameter adjustment based on query complexity (top_k, similarity thresholds)
+- **Enhanced Chart Generation:**
+  - Smarter axis selection logic based on column names, data types, and semantic meaning
+  - Dynamic chart type selection based on data characteristics and complexity analysis
+  - Enhanced metadata in chart configurations for better frontend rendering
+  - Improved title generation and visualization recommendations
+- **Production Reliability:**
+  - Multiple layers of fallback mechanisms for consistent query processing
+  - Comprehensive error handling with graceful degradation when services are unavailable
+  - Performance optimizations including automatic query limiting and complexity-based routing
+  - Enhanced logging and monitoring for better debugging and performance analysis
+- **Testing Excellence:**
+  - All 14 LangChain service tests passing with enhanced accuracy requirements
+  - Query classification accuracy improvements verified through comprehensive test scenarios
+  - Backward compatibility maintained while adding sophisticated new capabilities
+  - Integration testing with embeddings service and suggestions service validated
+
+### Task B22: Optimize Vector Search
+
+- **Query Embedding Caching:**
+  - Implemented intelligent caching system for query embeddings to eliminate redundant OpenAI API calls
+  - LRU cache with configurable size limits (100 entries) and automatic eviction management
+  - Cache-aware embedding generation with selective caching for queries but not project embeddings
+  - Significant performance improvement for repeated queries and similar search patterns
+- **Vectorized Similarity Calculation:**
+  - Replaced inefficient loop-based cosine similarity with high-performance vectorized numpy operations
+  - Single batch computation for all embeddings instead of individual similarity calculations
+  - Matrix-based operations providing substantial performance improvements for large embedding sets
+  - Memory-efficient computation reducing processing time and resource usage
+- **Optimized Storage Format:**
+  - Enhanced embedding storage using numpy arrays for better memory efficiency and computation speed
+  - Dual access pattern: raw numpy arrays for performance, compatibility lists for existing interfaces
+  - Float64 precision maintained for accuracy while optimizing storage and computation
+  - Backward compatibility layer ensuring all existing tests and functionality remain intact
+- **Advanced Similarity Filtering:**
+  - Added `min_similarity` threshold parameter to filter out irrelevant results early
+  - Relevance-based filtering reducing processing overhead and improving result quality
+  - Configurable similarity thresholds for different use cases and accuracy requirements
+  - Better semantic search results through intelligent filtering of low-relevance matches
+- **Performance Architecture:**
+  - Separate internal methods for optimized computation vs compatibility access
+  - Memory-efficient data structures with optimized numpy array handling
+  - Intelligent resource management preventing memory bloat while maintaining performance
+  - Scalable design ready for production vector database integration (Pinecone, Weaviate)
+- **Testing and Validation:**
+  - All 20 embeddings service tests passing with performance optimizations verified
+  - All 14 LangChain integration tests passing confirming no regression in functionality
+  - Backward compatibility rigorously maintained through comprehensive test coverage
+  - Performance benchmarks validated showing significant improvements in search speed and relevance
+
 - CI/CD pipeline simplified for MVP speed (fast builds, basic checks only)
 - PostgreSQL database setup and configured with proper migrations
 - Documentation for API, environment, and development

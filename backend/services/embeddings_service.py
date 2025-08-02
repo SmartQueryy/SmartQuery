@@ -50,8 +50,14 @@ class EmbeddingsService:
         # In production, this would be replaced with vector database (Pinecone, Weaviate, etc.)
         self._embeddings_store: Dict[str, Dict[str, Any]] = {}
 
-    def generate_embedding(self, text: str) -> Optional[List[float]]:
-        """Generate embedding for given text using OpenAI"""
+        # Query embedding cache for better performance
+        self._query_cache: Dict[str, List[float]] = {}
+        self._cache_size_limit = 100  # Limit cache size to prevent memory bloat
+
+    def generate_embedding(
+        self, text: str, use_cache: bool = True
+    ) -> Optional[List[float]]:
+        """Generate embedding for given text using OpenAI with caching"""
         try:
             if not self.client:
                 logger.warning("OpenAI client not available, returning None embedding")
@@ -62,6 +68,11 @@ class EmbeddingsService:
             if not cleaned_text:
                 return None
 
+            # Check cache for query embeddings to improve performance
+            if use_cache and cleaned_text in self._query_cache:
+                logger.debug(f"Using cached embedding for: {cleaned_text[:50]}...")
+                return self._query_cache[cleaned_text]
+
             # Generate embedding
             response = self.client.embeddings.create(
                 model=self.embedding_model, input=cleaned_text
@@ -69,6 +80,16 @@ class EmbeddingsService:
 
             embedding = response.data[0].embedding
             logger.info(f"Generated embedding for text (length: {len(cleaned_text)})")
+
+            # Cache query embeddings (but not project embeddings to save memory)
+            if use_cache and len(self._query_cache) < self._cache_size_limit:
+                self._query_cache[cleaned_text] = embedding
+            elif use_cache and len(self._query_cache) >= self._cache_size_limit:
+                # Clear oldest entries when cache is full
+                oldest_key = next(iter(self._query_cache))
+                del self._query_cache[oldest_key]
+                self._query_cache[cleaned_text] = embedding
+
             return embedding
 
         except Exception as e:
@@ -118,7 +139,7 @@ class EmbeddingsService:
 
             # 1. Dataset overview embedding
             overview_text = self._create_dataset_overview(project)
-            overview_embedding = self.generate_embedding(overview_text)
+            overview_embedding = self.generate_embedding(overview_text, use_cache=False)
             if overview_embedding:
                 embeddings_data.append(
                     {
@@ -131,7 +152,7 @@ class EmbeddingsService:
             # 2. Column-specific embeddings
             for col_metadata in project.columns_metadata:
                 col_text = self._create_column_description(col_metadata)
-                col_embedding = self.generate_embedding(col_text)
+                col_embedding = self.generate_embedding(col_text, use_cache=False)
                 if col_embedding:
                     embeddings_data.append(
                         {
@@ -144,7 +165,7 @@ class EmbeddingsService:
 
             # 3. Sample data patterns embedding
             sample_text = self._create_sample_data_description(project)
-            sample_embedding = self.generate_embedding(sample_text)
+            sample_embedding = self.generate_embedding(sample_text, use_cache=False)
             if sample_embedding:
                 embeddings_data.append(
                     {
@@ -167,9 +188,14 @@ class EmbeddingsService:
             return False
 
     def semantic_search(
-        self, project_id: str, user_id: str, query: str, top_k: int = 3
+        self,
+        project_id: str,
+        user_id: str,
+        query: str,
+        top_k: int = 3,
+        min_similarity: float = 0.1,
     ) -> List[Dict[str, Any]]:
-        """Perform semantic search on project embeddings"""
+        """Perform optimized semantic search on project embeddings"""
         try:
             # Validate project access
             project_uuid = uuid.UUID(project_id)
@@ -188,22 +214,39 @@ class EmbeddingsService:
             if not query_embedding:
                 return []
 
-            # Get stored embeddings for project
-            project_embeddings = self._get_project_embeddings(project_id)
+            # Get stored embeddings for project (using raw numpy arrays for performance)
+            project_embeddings = self._get_project_embeddings_raw(project_id)
             if not project_embeddings:
                 logger.warning(f"No embeddings found for project {project_id}")
                 return []
 
-            # Calculate similarities
+            # Optimized vectorized similarity calculation
             similarities = []
-            query_vec = np.array(query_embedding).reshape(1, -1)
+            query_vec = np.array(query_embedding)
+
+            # Prepare all embeddings as a matrix for vectorized computation
+            embedding_matrix = []
+            embedding_metadata = []
 
             for embedding_data in project_embeddings:
                 stored_embedding = embedding_data.get("embedding")
                 if stored_embedding:
-                    stored_vec = np.array(stored_embedding).reshape(1, -1)
-                    similarity = cosine_similarity(query_vec, stored_vec)[0][0]
+                    embedding_matrix.append(stored_embedding)
+                    embedding_metadata.append(embedding_data)
 
+            if not embedding_matrix:
+                return []
+
+            # Vectorized cosine similarity calculation
+            embedding_matrix = np.array(embedding_matrix)
+            similarities_vector = cosine_similarity([query_vec], embedding_matrix)[0]
+
+            # Build results with similarity filtering
+            for i, similarity in enumerate(similarities_vector):
+                if (
+                    similarity >= min_similarity
+                ):  # Filter by minimum similarity threshold
+                    embedding_data = embedding_metadata[i]
                     similarities.append(
                         {
                             "similarity": float(similarity),
@@ -377,12 +420,39 @@ class EmbeddingsService:
     def _store_project_embeddings(
         self, project_id: str, embeddings_data: List[Dict[str, Any]]
     ):
-        """Store embeddings in memory (would be database in production)"""
-        self._embeddings_store[project_id] = embeddings_data
+        """Store embeddings in memory with optimized format (would be database in production)"""
+        # Convert embeddings to numpy arrays for better performance
+        optimized_data = []
+        for data in embeddings_data:
+            if "embedding" in data and data["embedding"]:
+                optimized_data.append(
+                    {
+                        **data,
+                        "embedding": np.array(
+                            data["embedding"], dtype=np.float64
+                        ),  # Use float64 for compatibility
+                    }
+                )
+            else:
+                optimized_data.append(data)
+
+        self._embeddings_store[project_id] = optimized_data
+
+    def _get_project_embeddings_raw(self, project_id: str) -> List[Dict[str, Any]]:
+        """Retrieve raw embeddings with numpy arrays for optimized computation"""
+        return self._embeddings_store.get(project_id, [])
 
     def _get_project_embeddings(self, project_id: str) -> List[Dict[str, Any]]:
         """Retrieve embeddings from memory (would be database in production)"""
-        return self._embeddings_store.get(project_id, [])
+        stored_data = self._embeddings_store.get(project_id, [])
+        # Convert numpy arrays back to lists for compatibility with existing tests
+        result = []
+        for data in stored_data:
+            if "embedding" in data and isinstance(data["embedding"], np.ndarray):
+                result.append({**data, "embedding": data["embedding"].tolist()})
+            else:
+                result.append(data)
+        return result
 
 
 # Singleton instance - lazy initialization
