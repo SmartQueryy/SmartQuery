@@ -11,6 +11,7 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
 from models.response_schemas import QueryResult
+from middleware.monitoring import track_performance
 from services.duckdb_service import duckdb_service
 from services.embeddings_service import get_embeddings_service
 from services.suggestions_service import get_suggestions_service
@@ -385,6 +386,7 @@ class LangChainService:
         self.project_service = get_project_service()
         self.storage_service = storage_service
 
+    @track_performance("langchain_query_processing")
     def process_query(
         self, question: str, project_id: str, user_id: str
     ) -> QueryResult:

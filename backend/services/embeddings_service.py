@@ -7,6 +7,7 @@ import numpy as np
 from openai import OpenAI
 from sklearn.metrics.pairwise import cosine_similarity
 
+from middleware.monitoring import track_performance
 from services.database_service import get_db_service
 from services.project_service import get_project_service
 
@@ -54,6 +55,7 @@ class EmbeddingsService:
         self._query_cache: Dict[str, List[float]] = {}
         self._cache_size_limit = 100  # Limit cache size to prevent memory bloat
 
+    @track_performance("openai_embedding_generation")
     def generate_embedding(
         self, text: str, use_cache: bool = True
     ) -> Optional[List[float]]:
@@ -187,6 +189,7 @@ class EmbeddingsService:
             logger.error(f"Error generating project embeddings: {str(e)}")
             return False
 
+    @track_performance("semantic_search")
     def semantic_search(
         self,
         project_id: str,

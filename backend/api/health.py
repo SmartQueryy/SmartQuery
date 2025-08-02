@@ -4,6 +4,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter
 
+from middleware.monitoring import query_performance_tracker
 from services.database_service import get_db_service
 from services.redis_service import redis_service
 from services.storage_service import storage_service
@@ -77,3 +78,73 @@ async def health_check() -> Dict[str, Any]:
             },
         },
     }
+
+
+@router.get("/metrics")
+async def get_performance_metrics() -> Dict[str, Any]:
+    """Get performance metrics for monitoring and bottleneck identification"""
+
+    try:
+        # Get operation performance statistics
+        operations_summary = query_performance_tracker.get_all_operations_summary()
+
+        # Calculate overall statistics
+        total_operations = sum(
+            stats["call_count"] for stats in operations_summary.values()
+        )
+        total_time = sum(stats["total_time"] for stats in operations_summary.values())
+        avg_time_overall = total_time / total_operations if total_operations > 0 else 0
+
+        # Identify slowest operations
+        slowest_operations = sorted(
+            [
+                {
+                    "operation": operation,
+                    "avg_time": stats["avg_time"],
+                    "call_count": stats["call_count"],
+                    "total_time": stats["total_time"],
+                }
+                for operation, stats in operations_summary.items()
+            ],
+            key=lambda x: x["avg_time"],
+            reverse=True,
+        )[
+            :5
+        ]  # Top 5 slowest
+
+        # Identify bottlenecks (operations taking > 2 seconds on average)
+        bottlenecks = [op for op in slowest_operations if op["avg_time"] > 2.0]
+
+        return {
+            "success": True,
+            "data": {
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "summary": {
+                    "total_operations": total_operations,
+                    "total_time": round(total_time, 3),
+                    "average_time": round(avg_time_overall, 3),
+                    "unique_operations": len(operations_summary),
+                },
+                "operations": operations_summary,
+                "slowest_operations": slowest_operations,
+                "bottlenecks": bottlenecks,
+                "performance_alerts": [
+                    f"Operation '{op['operation']}' averages {op['avg_time']:.3f}s per call"
+                    for op in bottlenecks
+                ],
+            },
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to retrieve performance metrics: {str(e)}",
+            "data": {
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "summary": {},
+                "operations": {},
+                "slowest_operations": [],
+                "bottlenecks": [],
+                "performance_alerts": [],
+            },
+        }
