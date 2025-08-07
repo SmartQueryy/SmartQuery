@@ -328,6 +328,7 @@ This document provides a comprehensive summary of all work completed on the Smar
 - **Optimized Vector Search (Task B22)** - Performance-optimized embeddings storage and semantic search
 - **Performance Monitoring System (Task B23)** - Comprehensive API and operation-level performance tracking with bottleneck detection
 - **API Response Standardization (Task B24)** - Standardized API response format across all endpoints ensuring consistent error handling
+- **API Contract Validation (Task B25)** - Comprehensive validation system ensuring all endpoints match documented API contract specifications
 
 ### Task B19: Setup Embeddings System
 
@@ -520,6 +521,48 @@ This document provides a comprehensive summary of all work completed on the Smar
   - All existing functionality preserved while adding response standardization
   - Zero breaking changes to successful response patterns already established
   - Enhanced error user experience with consistent, predictable error response format
+
+### Task B25: API Contract Validation
+
+- **Comprehensive Contract Validation System:**
+  - Created `tests/test_api_contract_validation.py` with 13 comprehensive tests covering all major endpoint categories
+  - Validates all authentication, project, chat, and health endpoints against documented API contract
+  - Ensures complete frontend-backend compatibility through response structure validation
+  - Comprehensive field type validation, enum validation, and nested object structure verification
+- **Authentication Endpoints Validation:**
+  - GET /auth/me endpoint contract compliance with User object structure validation
+  - POST /auth/google endpoint with AuthResponse structure and token field validation
+  - POST /auth/logout endpoint with proper logout response structure validation
+  - All authentication flows tested with proper JWT token handling and service mocking
+- **Project Management Endpoints Validation:**
+  - GET /projects endpoint with PaginatedResponse structure and Project object validation
+  - POST /projects endpoint with CreateProjectResponse structure and upload URL validation
+  - GET /projects/{id} endpoint with individual Project details structure validation
+  - GET /projects/{id}/status endpoint with UploadStatusResponse structure and progress validation
+- **Chat System Endpoints Validation:**
+  - POST /chat/{project_id}/message endpoint with SendMessageResponse and QueryResult validation
+  - GET /chat/{project_id}/messages endpoint with paginated ChatMessage structure validation
+  - GET /chat/{project_id}/preview endpoint with CSVPreview structure and data type validation
+  - GET /chat/{project_id}/suggestions endpoint with QuerySuggestion array structure validation
+- **Health Monitoring Endpoints Validation:**
+  - GET /health endpoint with HealthStatus structure and service check validation
+  - GET / root endpoint with standardized response structure validation
+  - All health endpoints verified for consistent ApiResponse wrapper format
+- **Production-Ready Validation Framework:**
+  - Comprehensive service layer mocking preventing external dependencies during testing
+  - Authentication dependency override system for secure endpoint testing
+  - Storage service mocking to prevent MinIO connection requirements during validation
+  - LangChain service mocking with realistic QueryResult generation for chat endpoint testing
+- **Contract Compliance Verification:**
+  - All 13 tests pass consistently confirming complete API contract adherence
+  - Response structure validation ensures all endpoints return proper ApiResponse<T> format
+  - Field type validation confirms correct data types for all response fields
+  - Enum validation verifies status fields, categories, and complexity levels match contract specifications
+- **Testing Excellence:**
+  - Error-free execution across all endpoint categories with comprehensive edge case coverage
+  - Proper mock data generation using real values instead of Mock objects for Pydantic validation
+  - Code formatted with Black ensuring consistent style standards across validation framework
+  - Zero breaking changes to existing functionality while adding comprehensive validation coverage
 
 - CI/CD pipeline simplified for MVP speed (fast builds, basic checks only)
 - PostgreSQL database setup and configured with proper migrations
