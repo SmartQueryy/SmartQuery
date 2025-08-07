@@ -63,6 +63,7 @@ class UserTable(Base):
     google_id = Column(String(255), unique=True, nullable=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    last_sign_in_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -113,10 +114,13 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     avatar_url: Optional[str] = None
+    last_sign_in_at: Optional[datetime] = None
 
 
 class UserInDB(UserBase):
     id: uuid.UUID
+    google_id: Optional[str] = None
+    last_sign_in_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
