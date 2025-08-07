@@ -133,7 +133,7 @@ class TestAuthIntegration:
 
             assert response.status_code == 401
             data = response.json()
-            assert "Invalid Google token" in data["detail"]
+            assert "Invalid Google token" in data["error"]
 
     def test_google_oauth_login_empty_token(self, test_client):
         """Test Google OAuth login with empty token"""
@@ -141,7 +141,7 @@ class TestAuthIntegration:
 
         assert response.status_code == 400
         data = response.json()
-        assert "Google token is required" in data["detail"]
+        assert "Google token is required" in data["error"]
 
     def test_get_current_user_success(
         self, test_client, sample_user, valid_access_token
@@ -181,7 +181,7 @@ class TestAuthIntegration:
 
         assert response.status_code == 401
         data = response.json()
-        assert "Invalid or expired token" in data["detail"]
+        assert "Invalid or expired token" in data["error"]
 
     def test_get_current_user_expired_token(self, test_client, expired_token):
         """Test getting current user with expired token"""
@@ -191,7 +191,7 @@ class TestAuthIntegration:
 
         assert response.status_code == 401
         data = response.json()
-        assert "Invalid or expired token" in data["detail"]
+        assert "Invalid or expired token" in data["error"]
 
     def test_refresh_token_success(self, test_client, sample_user, valid_refresh_token):
         """Test successful token refresh"""
@@ -230,7 +230,7 @@ class TestAuthIntegration:
 
             assert response.status_code == 401
             data = response.json()
-            assert "Invalid or expired refresh token" in data["detail"]
+            assert "Invalid or expired refresh token" in data["error"]
 
     def test_refresh_token_empty(self, test_client):
         """Test token refresh with empty refresh token"""
@@ -238,7 +238,7 @@ class TestAuthIntegration:
 
         assert response.status_code == 400
         data = response.json()
-        assert "Refresh token is required" in data["detail"]
+        assert "Refresh token is required" in data["error"]
 
     def test_logout_success(self, test_client, sample_user, valid_access_token):
         """Test successful logout"""
@@ -275,7 +275,7 @@ class TestAuthIntegration:
 
         assert response.status_code == 401
         data = response.json()
-        assert "Invalid or expired token" in data["detail"]
+        assert "Invalid or expired token" in data["error"]
 
     def test_auth_health_check(self, test_client):
         """Test authentication service health check"""
@@ -310,7 +310,7 @@ class TestAuthIntegration:
 
             assert response.status_code == 503
             data = response.json()
-            assert "Authentication service is unhealthy" in data["detail"]
+            assert "Authentication service is unhealthy" in data["error"]
 
 
 class TestAuthMiddlewareIntegration:
@@ -359,7 +359,7 @@ class TestAuthMiddlewareIntegration:
 
         assert response.status_code == 401
         data = response.json()
-        assert "Invalid or expired token" in data["detail"]
+        assert "Invalid or expired token" in data["error"]
 
     def test_middleware_no_authorization_header(self, test_client):
         """Test that middleware handles missing authorization header"""
@@ -448,9 +448,10 @@ class TestAPIResponseFormat:
             assert response.status_code == 401
             data = response.json()
 
-            # FastAPI error format
-            assert "detail" in data
-            assert isinstance(data["detail"], str)
+            # Standardized error format
+            assert "error" in data
+            assert isinstance(data["error"], str)
+            assert data["success"] is False
 
     def test_user_data_format(self, test_client, sample_user):
         """Test that user data format matches frontend expectations"""
@@ -531,7 +532,7 @@ class TestErrorHandling:
 
             assert response.status_code == 500
             data = response.json()
-            assert "Authentication failed" in data["detail"]
+            assert "Authentication failed" in data["error"]
 
     def test_database_error_handling(self, test_client):
         """Test handling of database errors during authentication"""
@@ -556,7 +557,7 @@ class TestErrorHandling:
 
                 assert response.status_code == 500
                 data = response.json()
-                assert "Authentication failed" in data["detail"]
+                assert "Authentication failed" in data["error"]
 
     def test_jwt_service_error_handling(self, test_client):
         """Test handling of JWT service errors"""
@@ -571,4 +572,4 @@ class TestErrorHandling:
 
             assert response.status_code == 500
             data = response.json()
-            assert "Failed to get user information" in data["detail"]
+            assert "Failed to get user information" in data["error"]

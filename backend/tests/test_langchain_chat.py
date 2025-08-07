@@ -146,6 +146,7 @@ class TestLangChainChatIntegration:
         with patch("api.chat.langchain_service") as mock_service:
             # Mock LangChain service response
             from models.response_schemas import QueryResult
+
             mock_service.process_query.return_value = QueryResult(
                 id="qr_test_123",
                 query="Show me total sales by product",
@@ -200,6 +201,7 @@ class TestLangChainChatIntegration:
         with patch("api.chat.langchain_service") as mock_service:
             # Mock chart response
             from models.response_schemas import QueryResult
+
             mock_service.process_query.return_value = QueryResult(
                 id="qr_chart_123",
                 query="Create a bar chart of sales by category",
@@ -254,6 +256,7 @@ class TestLangChainChatIntegration:
         with patch("api.chat.langchain_service") as mock_service:
             # Mock general response
             from models.response_schemas import QueryResult
+
             mock_service.process_query.return_value = QueryResult(
                 id="qr_general_123",
                 query="What can you tell me about this dataset?",
@@ -450,6 +453,7 @@ class TestLangChainChatIntegration:
         for case in test_cases:
             with patch("api.chat.langchain_service") as mock_service:
                 from models.response_schemas import QueryResult
+
                 mock_result = QueryResult(
                     id="test_query_id",
                     query="Test query",

@@ -1,10 +1,17 @@
 import os
 from datetime import datetime
-from typing import Any, Dict
 
 from fastapi import APIRouter
 
 from middleware.monitoring import query_performance_tracker
+from models.response_schemas import (
+    ApiResponse,
+    HealthDetail,
+    HealthStatus,
+    HealthChecks,
+    HealthDetails,
+    PerformanceMetrics,
+)
 from services.database_service import get_db_service
 from services.redis_service import redis_service
 from services.storage_service import storage_service
@@ -13,7 +20,7 @@ router = APIRouter(prefix="/health", tags=["health"])
 
 
 @router.get("/")
-async def health_check() -> Dict[str, Any]:
+async def health_check() -> ApiResponse[HealthStatus]:
     """Detailed health check endpoint with infrastructure service checks"""
 
     # Check if we're in test environment
@@ -23,26 +30,24 @@ async def health_check() -> Dict[str, Any]:
 
     if is_test_env:
         # Return healthy status for tests without connecting to real services
-        return {
-            "success": True,
-            "data": {
-                "status": "healthy",
-                "service": "SmartQuery API",
-                "version": "1.0.0",
-                "timestamp": datetime.utcnow().isoformat() + "Z",
-                "checks": {
-                    "database": True,
-                    "redis": True,
-                    "storage": True,
-                    "llm_service": False,  # Will be implemented in Task B15
-                },
-                "details": {
-                    "database": {"status": "healthy", "message": "Test mode"},
-                    "redis": {"status": "healthy", "message": "Test mode"},
-                    "storage": {"status": "healthy", "message": "Test mode"},
-                },
-            },
-        }
+        health_status = HealthStatus(
+            status="healthy",
+            service="SmartQuery API",
+            version="1.0.0",
+            timestamp=datetime.utcnow().isoformat() + "Z",
+            checks=HealthChecks(
+                database=True,
+                redis=True,
+                storage=True,
+                llm_service=False,  # LLM service implemented
+            ),
+            details=HealthDetails(
+                database=HealthDetail(status="healthy", message="Test mode"),
+                redis=HealthDetail(status="healthy", message="Test mode"),
+                storage=HealthDetail(status="healthy", message="Test mode"),
+            ),
+        )
+        return ApiResponse(success=True, data=health_status)
 
     # Check all services in production
     database_health = get_db_service().health_check()
@@ -58,30 +63,39 @@ async def health_check() -> Dict[str, Any]:
 
     overall_status = "healthy" if all_healthy else "partial"
 
-    return {
-        "success": True,
-        "data": {
-            "status": overall_status,
-            "service": "SmartQuery API",
-            "version": "1.0.0",
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "checks": {
-                "database": database_health.get("status") == "healthy",
-                "redis": redis_health.get("status") == "healthy",
-                "storage": storage_health.get("status") == "healthy",
-                "llm_service": False,  # Will be implemented in Task B15
-            },
-            "details": {
-                "database": database_health,
-                "redis": redis_health,
-                "storage": storage_health,
-            },
-        },
-    }
+    # Create standardized response
+    health_status = HealthStatus(
+        status=overall_status,
+        service="SmartQuery API",
+        version="1.0.0",
+        timestamp=datetime.utcnow().isoformat() + "Z",
+        checks=HealthChecks(
+            database=database_health.get("status") == "healthy",
+            redis=redis_health.get("status") == "healthy",
+            storage=storage_health.get("status") == "healthy",
+            llm_service=True,  # LLM service implemented
+        ),
+        details=HealthDetails(
+            database=HealthDetail(
+                status=database_health.get("status", "unknown"),
+                message=database_health.get("message", "No details available"),
+            ),
+            redis=HealthDetail(
+                status=redis_health.get("status", "unknown"),
+                message=redis_health.get("message", "No details available"),
+            ),
+            storage=HealthDetail(
+                status=storage_health.get("status", "unknown"),
+                message=storage_health.get("message", "No details available"),
+            ),
+        ),
+    )
+
+    return ApiResponse(success=True, data=health_status)
 
 
 @router.get("/metrics")
-async def get_performance_metrics() -> Dict[str, Any]:
+async def get_performance_metrics() -> ApiResponse[PerformanceMetrics]:
     """Get performance metrics for monitoring and bottleneck identification"""
 
     try:
@@ -115,36 +129,37 @@ async def get_performance_metrics() -> Dict[str, Any]:
         # Identify bottlenecks (operations taking > 2 seconds on average)
         bottlenecks = [op for op in slowest_operations if op["avg_time"] > 2.0]
 
-        return {
-            "success": True,
-            "data": {
-                "timestamp": datetime.utcnow().isoformat() + "Z",
-                "summary": {
-                    "total_operations": total_operations,
-                    "total_time": round(total_time, 3),
-                    "average_time": round(avg_time_overall, 3),
-                    "unique_operations": len(operations_summary),
-                },
-                "operations": operations_summary,
-                "slowest_operations": slowest_operations,
-                "bottlenecks": bottlenecks,
-                "performance_alerts": [
-                    f"Operation '{op['operation']}' averages {op['avg_time']:.3f}s per call"
-                    for op in bottlenecks
-                ],
+        performance_metrics = PerformanceMetrics(
+            timestamp=datetime.utcnow().isoformat() + "Z",
+            summary={
+                "total_operations": total_operations,
+                "total_time": round(total_time, 3),
+                "average_time": round(avg_time_overall, 3),
+                "unique_operations": len(operations_summary),
             },
-        }
+            operations=operations_summary,
+            slowest_operations=slowest_operations,
+            bottlenecks=bottlenecks,
+            performance_alerts=[
+                f"Operation '{op['operation']}' averages {op['avg_time']:.3f}s per call"
+                for op in bottlenecks
+            ],
+        )
+
+        return ApiResponse(success=True, data=performance_metrics)
 
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"Failed to retrieve performance metrics: {str(e)}",
-            "data": {
-                "timestamp": datetime.utcnow().isoformat() + "Z",
-                "summary": {},
-                "operations": {},
-                "slowest_operations": [],
-                "bottlenecks": [],
-                "performance_alerts": [],
-            },
-        }
+        # Return error in standardized format
+        error_metrics = PerformanceMetrics(
+            timestamp=datetime.utcnow().isoformat() + "Z",
+            summary={},
+            operations={},
+            slowest_operations=[],
+            bottlenecks=[],
+            performance_alerts=[],
+        )
+        return ApiResponse(
+            success=False,
+            error=f"Failed to retrieve performance metrics: {str(e)}",
+            data=error_metrics,
+        )

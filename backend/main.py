@@ -12,7 +12,9 @@ from api.chat import router as chat_router
 from api.health import router as health_router
 from api.middleware.cors import setup_cors
 from api.projects import router as projects_router
+from middleware.error_response_middleware import setup_error_handlers
 from middleware.monitoring import PerformanceMonitoringMiddleware
+from models.response_schemas import ApiResponse
 
 # Create FastAPI application
 app = FastAPI(
@@ -26,6 +28,9 @@ app = FastAPI(
 # Setup CORS middleware
 setup_cors(app)
 
+# Setup standardized error handlers
+setup_error_handlers(app)
+
 # Add performance monitoring middleware
 app.add_middleware(PerformanceMonitoringMiddleware)
 
@@ -37,12 +42,11 @@ app.include_router(chat_router)
 
 
 @app.get("/")
-async def root():
+async def root() -> ApiResponse[dict]:
     """Root endpoint"""
-    return {
-        "success": True,
-        "data": {"message": "SmartQuery API is running", "status": "healthy"},
-    }
+    return ApiResponse(
+        success=True, data={"message": "SmartQuery API is running", "status": "healthy"}
+    )
 
 
 if __name__ == "__main__":

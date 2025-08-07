@@ -16,6 +16,30 @@ class ApiResponse(BaseModel, Generic[T]):
     message: Optional[str] = None
 
 
+class HealthDetail(BaseModel):
+    """Health check detail for individual services"""
+
+    status: str
+    message: str
+
+
+class HealthChecks(BaseModel):
+    """Individual health check status"""
+
+    database: bool
+    redis: bool
+    storage: bool
+    llm_service: bool
+
+
+class HealthDetails(BaseModel):
+    """Detailed health information for each service"""
+
+    database: HealthDetail
+    redis: HealthDetail
+    storage: HealthDetail
+
+
 class HealthStatus(BaseModel):
     """Health check status model"""
 
@@ -23,16 +47,19 @@ class HealthStatus(BaseModel):
     service: str
     version: str
     timestamp: str
-    checks: dict
+    checks: HealthChecks
+    details: Optional[HealthDetails] = None
 
 
-class HealthChecks(BaseModel):
-    """Individual health checks"""
+class PerformanceMetrics(BaseModel):
+    """Performance metrics model"""
 
-    database: bool
-    redis: bool
-    storage: bool
-    llm_service: bool
+    timestamp: str
+    summary: Dict[str, Any]
+    operations: Dict[str, Any]
+    slowest_operations: List[Dict[str, Any]]
+    bottlenecks: List[Dict[str, Any]]
+    performance_alerts: List[str]
 
 
 class ValidationError(BaseModel):
