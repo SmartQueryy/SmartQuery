@@ -251,10 +251,13 @@ class TestDuckDBService:
 
         # Verify method calls with UUID objects
         from uuid import UUID
+
         service.project_service.check_project_ownership.assert_called_once_with(
             UUID(project_id), UUID(user_id)
         )
-        service.project_service.get_project_by_id.assert_called_once_with(UUID(project_id))
+        service.project_service.get_project_by_id.assert_called_once_with(
+            UUID(project_id)
+        )
         mock_load_csv.assert_called_once_with(mock_project)
         mock_execute_sql.assert_called_once_with("SELECT * FROM data", test_df)
 

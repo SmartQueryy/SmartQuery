@@ -286,8 +286,8 @@ async def send_message(
             ai_content += f"\n\n**SQL Query:** `{query_result.sql_query}`"
     elif query_result.result_type == "chart":
         chart_type = "chart"
-        if query_result.chart_config and query_result.chart_config.get('type'):
-            chart_type = query_result.chart_config['type']
+        if query_result.chart_config and query_result.chart_config.get("type"):
+            chart_type = query_result.chart_config["type"]
         ai_content = f"I've created a {chart_type} visualization"
         if query_result.sql_query:
             ai_content += f"\n\n**SQL Query:** `{query_result.sql_query}`"
@@ -311,7 +311,9 @@ async def send_message(
     )
     MOCK_CHAT_MESSAGES[project_id].append(ai_message.model_dump())
 
-    response = SendMessageResponse(message=user_message, result=query_result, ai_message=ai_message)
+    response = SendMessageResponse(
+        message=user_message, result=query_result, ai_message=ai_message
+    )
 
     return ApiResponse(success=True, data=response)
 
@@ -379,28 +381,30 @@ async def get_csv_preview(
         project_obj = project_service.get_project_by_id(project_uuid)
         if not project_obj:
             raise HTTPException(status_code=404, detail="Project not found")
-        
+
         # Check if CSV file exists
         if not project_obj.csv_path:
             raise HTTPException(status_code=404, detail="CSV preview not available")
-        
+
         # Load actual CSV data from storage
         preview = _load_csv_preview_from_storage(project_obj)
-        
+
         if not preview:
             # Fallback to metadata-based preview if file loading fails
             preview = _generate_preview_from_metadata(project_obj)
-        
+
         if not preview:
             raise HTTPException(status_code=404, detail="CSV preview not available")
-        
+
         return ApiResponse(success=True, data=preview)
-        
+
     except HTTPException:
         # Re-raise HTTPExceptions (like 404) as-is
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error loading CSV preview: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error loading CSV preview: {str(e)}"
+        )
 
 
 def _load_csv_preview_from_storage(project_obj) -> Optional[CSVPreview]:
@@ -409,37 +413,37 @@ def _load_csv_preview_from_storage(project_obj) -> Optional[CSVPreview]:
         from services.storage_service import storage_service
         import pandas as pd
         import io
-        
+
         # Download CSV file from storage
         csv_bytes = storage_service.download_file(project_obj.csv_path)
         if not csv_bytes:
             return None
-        
+
         # Read CSV into pandas DataFrame
         csv_buffer = io.BytesIO(csv_bytes)
         df = pd.read_csv(csv_buffer)
-        
+
         # Get first 5 rows for preview
         preview_df = df.head(5)
-        
+
         # Extract column information
         columns = list(df.columns)
         sample_data = preview_df.values.tolist()
         total_rows = len(df)
-        
+
         # Determine data types
         data_types = {}
         for col in columns:
             dtype = str(df[col].dtype)
-            if 'int' in dtype or 'float' in dtype:
-                data_types[col] = 'number'
-            elif 'datetime' in dtype or 'date' in dtype:
-                data_types[col] = 'date'
-            elif 'bool' in dtype:
-                data_types[col] = 'boolean'
+            if "int" in dtype or "float" in dtype:
+                data_types[col] = "number"
+            elif "datetime" in dtype or "date" in dtype:
+                data_types[col] = "date"
+            elif "bool" in dtype:
+                data_types[col] = "boolean"
             else:
-                data_types[col] = 'string'
-        
+                data_types[col] = "string"
+
         # Convert any non-serializable values to strings
         serializable_sample_data = []
         for row in sample_data:
@@ -452,14 +456,14 @@ def _load_csv_preview_from_storage(project_obj) -> Optional[CSVPreview]:
                 else:
                     serializable_row.append(value)
             serializable_sample_data.append(serializable_row)
-        
+
         return CSVPreview(
             columns=columns,
             sample_data=serializable_sample_data,
             total_rows=total_rows,
-            data_types=data_types
+            data_types=data_types,
         )
-        
+
     except Exception as e:
         logger.error(f"Error loading CSV preview from storage: {str(e)}")
         return None
@@ -470,37 +474,40 @@ def _generate_preview_from_metadata(project_obj) -> Optional[CSVPreview]:
     try:
         if not project_obj.columns_metadata:
             return None
-        
+
         # Extract column names and types
-        columns = [col.get('name', '') for col in project_obj.columns_metadata]
-        data_types = {col.get('name', ''): col.get('type', 'unknown') for col in project_obj.columns_metadata}
-        
+        columns = [col.get("name", "") for col in project_obj.columns_metadata]
+        data_types = {
+            col.get("name", ""): col.get("type", "unknown")
+            for col in project_obj.columns_metadata
+        }
+
         # Generate sample data from metadata
         sample_data = []
         for i in range(min(5, project_obj.row_count or 5)):  # Show max 5 sample rows
             row = []
             for col in project_obj.columns_metadata:
-                sample_values = col.get('sample_values', [])
+                sample_values = col.get("sample_values", [])
                 if sample_values and len(sample_values) > i:
                     row.append(sample_values[i])
                 else:
                     # Generate placeholder based on type
-                    col_type = col.get('type', 'string')
-                    if col_type == 'number':
+                    col_type = col.get("type", "string")
+                    if col_type == "number":
                         row.append(0)
-                    elif col_type == 'date':
-                        row.append('2024-01-01')
+                    elif col_type == "date":
+                        row.append("2024-01-01")
                     else:
                         row.append(f"Sample {i+1}")
             sample_data.append(row)
-        
+
         return CSVPreview(
             columns=columns,
             sample_data=sample_data,
             total_rows=project_obj.row_count or 0,
-            data_types=data_types
+            data_types=data_types,
         )
-        
+
     except Exception as e:
         logger.error(f"Error generating preview from metadata: {str(e)}")
         return None

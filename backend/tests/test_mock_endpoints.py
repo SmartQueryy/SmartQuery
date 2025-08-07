@@ -194,7 +194,7 @@ def test_csv_preview(
         # This is expected behavior for new projects
         assert response.status_code == 404
         data = response.json()
-        assert data["detail"] == "CSV preview not available"
+        assert data["error"] == "CSV preview not available"
     finally:
         app.dependency_overrides.clear()
 
