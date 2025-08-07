@@ -1,0 +1,97 @@
+{
+  "summary": {
+    "total_endpoints": 7,
+    "avg_response_time": 1.1864285714285714,
+    "max_response_time": 3.85,
+    "avg_error_rate": 3.057142857142857,
+    "max_error_rate": 8.5,
+    "total_memory_usage": 421.7,
+    "avg_memory_per_endpoint": 60.24285714285714
+  },
+  "bottlenecks": [
+    "HIGH: POST /chat/{id}/message - 3.85s response time",
+    "HIGH: POST /chat/{id}/message - 8.5% error rate",
+    "HIGH: GET /chat/{id}/suggestions - 2.10s response time",
+    "HIGH: GET /chat/{id}/suggestions - 5.1% error rate"
+  ],
+  "performance_issues": [
+    {
+      "severity": "MEDIUM",
+      "endpoint": "POST /projects",
+      "issue": "Suboptimal response time",
+      "metric": "0.65s",
+      "target": "<0.5s"
+    },
+    {
+      "severity": "MEDIUM",
+      "endpoint": "POST /projects",
+      "issue": "Elevated error rate",
+      "metric": "2.8%",
+      "target": "<2%"
+    },
+    {
+      "severity": "HIGH",
+      "endpoint": "POST /chat/{id}/message",
+      "issue": "Slow response time",
+      "metric": "3.85s",
+      "target": "<0.5s"
+    },
+    {
+      "severity": "MEDIUM",
+      "endpoint": "POST /chat/{id}/message",
+      "issue": "High memory usage",
+      "metric": "156.7MB",
+      "target": "<100MB"
+    },
+    {
+      "severity": "MEDIUM",
+      "endpoint": "GET /chat/{id}/preview",
+      "issue": "Suboptimal response time",
+      "metric": "1.25s",
+      "target": "<0.5s"
+    },
+    {
+      "severity": "MEDIUM",
+      "endpoint": "GET /chat/{id}/preview",
+      "issue": "Elevated error rate",
+      "metric": "3.2%",
+      "target": "<2%"
+    },
+    {
+      "severity": "HIGH",
+      "endpoint": "GET /chat/{id}/suggestions",
+      "issue": "Slow response time",
+      "metric": "2.10s",
+      "target": "<0.5s"
+    }
+  ],
+  "recommendations": [
+    "PRIORITY 1: Optimize query processing pipeline",
+    "- Implement query result caching with Redis",
+    "- Cache OpenAI API responses for similar queries",
+    "- Add query timeout mechanisms (10s max)",
+    "- Implement async processing for complex queries",
+    "PRIORITY 2: Optimize database operations",
+    "- Add proper indexing for user_id and project_id lookups",
+    "- Implement database connection pooling",
+    "- Add query result caching",
+    "- Optimize SQL queries for list operations",
+    "PRIORITY 3: Optimize memory usage",
+    "- Implement streaming for large CSV file processing",
+    "- Add memory limits for query processing",
+    "- Optimize LangChain memory usage",
+    "- Implement proper garbage collection",
+    "PRIORITY 4: Improve error handling",
+    "- Add circuit breakers for external API calls",
+    "- Implement retry logic with exponential backoff",
+    "- Add proper error monitoring and alerting",
+    "- Improve input validation and error responses",
+    "GENERAL OPTIMIZATIONS:",
+    "- Implement response compression (gzip)",
+    "- Add CDN for static content delivery",
+    "- Set up performance monitoring dashboards",
+    "- Implement health checks with dependency monitoring",
+    "- Add rate limiting to prevent system overload"
+  ],
+  "performance_rating": "ACCEPTABLE"
+}

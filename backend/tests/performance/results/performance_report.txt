@@ -1,0 +1,94 @@
+SMARTQUERY API PERFORMANCE ANALYSIS REPORT
+================================================================================
+Generated: 2025-08-06 19:57:31
+Overall Performance Rating: ACCEPTABLE
+
+EXECUTIVE SUMMARY:
+• Total Endpoints Analyzed: 7
+• Average Response Time: 1.186s
+• Maximum Response Time: 3.850s
+• Average Error Rate: 3.06%
+• Total Memory Usage: 421.7MB
+• Critical Issues: 0
+• High Priority Issues: 2
+
+DETAILED ENDPOINT PERFORMANCE:
+--------------------------------------------------------------------------------
+Endpoint                            Method Avg Time   P95      RPS      Errors   Memory    
+--------------------------------------------------------------------------------
+/                                   GET    0.045s     0.08s    120.5     0.1%     8.2MB
+/health                             GET    0.125s     0.25s    85.3     0.5%     12.1MB
+/projects                           GET    0.285s     0.52s    35.7     1.2%     25.8MB
+/projects                           POST   0.650s     1.20s    18.4     2.8%     42.3MB
+/chat/{id}/message                  POST   3.850s     8.20s    2.1     8.5%     156.7MB
+/chat/{id}/preview                  GET    1.250s     2.80s    8.9     3.2%     78.4MB
+/chat/{id}/suggestions              GET    2.100s     4.50s    4.3     5.1%     98.2MB
+
+IDENTIFIED BOTTLENECKS:
+----------------------------------------
+• HIGH: POST /chat/{id}/message - 3.85s response time
+• HIGH: POST /chat/{id}/message - 8.5% error rate
+• HIGH: GET /chat/{id}/suggestions - 2.10s response time
+• HIGH: GET /chat/{id}/suggestions - 5.1% error rate
+
+PERFORMANCE ISSUES BY SEVERITY:
+----------------------------------------
+
+HIGH Priority:
+  • POST /chat/{id}/message: Slow response time (3.85s, target: <0.5s)
+  • GET /chat/{id}/suggestions: Slow response time (2.10s, target: <0.5s)
+
+MEDIUM Priority:
+  • POST /projects: Suboptimal response time (0.65s, target: <0.5s)
+  • POST /projects: Elevated error rate (2.8%, target: <2%)
+  • POST /chat/{id}/message: High memory usage (156.7MB, target: <100MB)
+  • GET /chat/{id}/preview: Suboptimal response time (1.25s, target: <0.5s)
+  • GET /chat/{id}/preview: Elevated error rate (3.2%, target: <2%)
+
+OPTIMIZATION RECOMMENDATIONS:
+----------------------------------------
+• PRIORITY 1: Optimize query processing pipeline
+• - Implement query result caching with Redis
+• - Cache OpenAI API responses for similar queries
+• - Add query timeout mechanisms (10s max)
+• - Implement async processing for complex queries
+• PRIORITY 2: Optimize database operations
+• - Add proper indexing for user_id and project_id lookups
+• - Implement database connection pooling
+• - Add query result caching
+• - Optimize SQL queries for list operations
+• PRIORITY 3: Optimize memory usage
+• - Implement streaming for large CSV file processing
+• - Add memory limits for query processing
+• - Optimize LangChain memory usage
+• - Implement proper garbage collection
+• PRIORITY 4: Improve error handling
+• - Add circuit breakers for external API calls
+• - Implement retry logic with exponential backoff
+• - Add proper error monitoring and alerting
+• - Improve input validation and error responses
+• GENERAL OPTIMIZATIONS:
+• - Implement response compression (gzip)
+• - Add CDN for static content delivery
+• - Set up performance monitoring dashboards
+• - Implement health checks with dependency monitoring
+• - Add rate limiting to prevent system overload
+
+PERFORMANCE TARGETS:
+------------------------------
+• System Health: < 100ms response time
+• Authentication: < 500ms response time
+• Project Operations: < 1s response time
+• Query Processing: < 5s response time
+• Error Rate: < 2% across all endpoints
+• Memory Usage: < 100MB per endpoint
+
+NEXT STEPS:
+---------------
+1. Address critical performance bottlenecks immediately
+2. Implement caching strategy for query results
+3. Optimize database queries and add indexing
+4. Set up continuous performance monitoring
+5. Schedule weekly performance reviews
+
+================================================================================

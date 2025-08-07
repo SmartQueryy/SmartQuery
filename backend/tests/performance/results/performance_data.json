@@ -1,0 +1,74 @@
+{
+  "endpoints": [
+    {
+      "endpoint": "/",
+      "method": "GET",
+      "avg_response_time": 0.045,
+      "p95_response_time": 0.08,
+      "p99_response_time": 0.12,
+      "requests_per_second": 120.5,
+      "error_rate": 0.1,
+      "memory_usage_mb": 8.2
+    },
+    {
+      "endpoint": "/health",
+      "method": "GET",
+      "avg_response_time": 0.125,
+      "p95_response_time": 0.25,
+      "p99_response_time": 0.4,
+      "requests_per_second": 85.3,
+      "error_rate": 0.5,
+      "memory_usage_mb": 12.1
+    },
+    {
+      "endpoint": "/projects",
+      "method": "GET",
+      "avg_response_time": 0.285,
+      "p95_response_time": 0.52,
+      "p99_response_time": 0.85,
+      "requests_per_second": 35.7,
+      "error_rate": 1.2,
+      "memory_usage_mb": 25.8
+    },
+    {
+      "endpoint": "/projects",
+      "method": "POST",
+      "avg_response_time": 0.65,
+      "p95_response_time": 1.2,
+      "p99_response_time": 2.1,
+      "requests_per_second": 18.4,
+      "error_rate": 2.8,
+      "memory_usage_mb": 42.3
+    },
+    {
+      "endpoint": "/chat/{id}/message",
+      "method": "POST",
+      "avg_response_time": 3.85,
+      "p95_response_time": 8.2,
+      "p99_response_time": 12.5,
+      "requests_per_second": 2.1,
+      "error_rate": 8.5,
+      "memory_usage_mb": 156.7
+    },
+    {
+      "endpoint": "/chat/{id}/preview",
+      "method": "GET",
+      "avg_response_time": 1.25,
+      "p95_response_time": 2.8,
+      "p99_response_time": 4.2,
+      "requests_per_second": 8.9,
+      "error_rate": 3.2,
+      "memory_usage_mb": 78.4
+    },
+    {
+      "endpoint": "/chat/{id}/suggestions",
+      "method": "GET",
+      "avg_response_time": 2.1,
+      "p95_response_time": 4.5,
+      "p99_response_time": 6.8,
+      "requests_per_second": 4.3,
+      "error_rate": 5.1,
+      "memory_usage_mb": 98.2
+    }
+  ]
+}
