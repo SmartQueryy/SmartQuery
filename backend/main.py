@@ -14,6 +14,7 @@ from api.middleware.cors import setup_cors
 from api.projects import router as projects_router
 from middleware.error_response_middleware import setup_error_handlers
 from middleware.monitoring import PerformanceMonitoringMiddleware
+from middleware.security_middleware import setup_security_middleware
 from models.response_schemas import ApiResponse
 
 # Create FastAPI application
@@ -27,6 +28,9 @@ app = FastAPI(
 
 # Setup CORS middleware
 setup_cors(app)
+
+# Setup comprehensive security middleware
+setup_security_middleware(app)
 
 # Setup standardized error handlers
 setup_error_handlers(app)
