@@ -155,8 +155,6 @@ class TestWorkflowIntegration:
                 row_count=100,
                 column_count=2,
                 columns_metadata=test_metadata,
-                csv_filename="test_data.csv",
-                csv_path="test/test_data.csv",
             )
             project_service.update_project_status(project_uuid, "ready")
 
@@ -206,10 +204,10 @@ class TestWorkflowIntegration:
         # Clean up
         user_service.delete_user(test_user.id)
 
-    @patch("services.langchain_service.OpenAI")
-    @patch("services.langchain_service.DuckDBService")
+    @patch("services.langchain_service.ChatOpenAI")
+    @patch("services.langchain_service.duckdb_service")
     def test_complete_chat_workflow(
-        self, mock_duckdb_class, mock_openai, test_db_setup
+        self, mock_duckdb, mock_openai, test_db_setup
     ):
         """Test complete chat workflow from project creation to querying"""
         user_service = get_user_service()
@@ -222,13 +220,12 @@ class TestWorkflowIntegration:
         )
         mock_openai.return_value = mock_llm
 
-        mock_duckdb = Mock()
-        mock_duckdb.execute_query.return_value = {
-            "data": [{"name": "Bob", "age": 30}, {"name": "Charlie", "age": 35}],
-            "execution_time": 0.08,
-            "row_count": 2,
-        }
-        mock_duckdb_class.return_value = mock_duckdb
+        mock_duckdb.execute_query.return_value = (
+            [{"name": "Bob", "age": 30}, {"name": "Charlie", "age": 35}],
+            0.08,
+            2
+        )
+        mock_duckdb.validate_sql_query.return_value = (True, "")
 
         # Step 1: Create test user and project
         google_data = GoogleOAuthData(
@@ -270,8 +267,6 @@ class TestWorkflowIntegration:
             row_count=200,
             column_count=3,
             columns_metadata=test_metadata,
-            csv_filename="employees.csv",
-            csv_path="test/employees.csv",
         )
         project_service.update_project_status(test_project.id, "ready")
 

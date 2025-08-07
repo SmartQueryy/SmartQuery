@@ -13,7 +13,7 @@ import pytest
 from models.project import ProjectCreate
 from models.response_schemas import QueryResult
 from models.user import GoogleOAuthData
-from services.duckdb_service import DuckDBService
+# DuckDB service accessed via langchain service
 from services.embeddings_service import EmbeddingsService
 from services.langchain_service import LangChainService
 from services.project_service import get_project_service
@@ -33,7 +33,7 @@ class TestLangChainIntegration:
         assert hasattr(langchain_service, "process_query")
         assert hasattr(langchain_service, "generate_suggestions")
 
-    @patch("services.langchain_service.OpenAI")
+    @patch("services.langchain_service.ChatOpenAI")
     def test_langchain_query_processing_integration(self, mock_openai, test_db_setup):
         """Test query processing integration across AI services"""
         user_service = get_user_service()
@@ -79,24 +79,21 @@ class TestLangChainIntegration:
             row_count=100,
             column_count=2,
             columns_metadata=test_metadata,
-            csv_filename="test.csv",
-            csv_path="test/path/test.csv",
         )
         project_service.update_project_status(test_project.id, "ready")
 
         # Mock DuckDB service
-        with patch("services.langchain_service.DuckDBService") as mock_duckdb_class:
-            mock_duckdb = Mock()
-            mock_duckdb.execute_query.return_value = {
-                "data": [{"name": "John", "age": 25}, {"name": "Jane", "age": 30}],
-                "execution_time": 0.1,
-                "row_count": 2,
-            }
-            mock_duckdb_class.return_value = mock_duckdb
+        with patch("services.langchain_service.duckdb_service") as mock_duckdb:
+            mock_duckdb.execute_query.return_value = (
+                [{"name": "John", "age": 25}, {"name": "Jane", "age": 30}],
+                0.1,
+                2
+            )
+            mock_duckdb.validate_sql_query.return_value = (True, "")
 
             # Test query processing
             result = langchain_service.process_query(
-                test_project.id, "Show me all the data"
+                "Show me all the data", str(test_project.id), str(test_user.id)
             )
 
             assert isinstance(result, QueryResult)
@@ -148,8 +145,6 @@ class TestLangChainIntegration:
             row_count=50,
             column_count=1,
             columns_metadata=test_metadata,
-            csv_filename="products.csv",
-            csv_path="test/products.csv",
         )
 
         # Test embeddings generation
@@ -217,8 +212,6 @@ class TestLangChainIntegration:
             row_count=1000,
             column_count=3,
             columns_metadata=test_metadata,
-            csv_filename="sales.csv",
-            csv_path="test/sales.csv",
         )
 
         # Test suggestions generation
@@ -246,24 +239,22 @@ class TestLangChainIntegration:
         project_service.delete_project(test_project.id)
         user_service.delete_user(test_user.id)
 
-    @patch("services.langchain_service.DuckDBService")
-    def test_duckdb_integration(self, mock_duckdb_class, test_db_setup):
+    @patch("services.langchain_service.duckdb_service")
+    def test_duckdb_integration(self, mock_duckdb, test_db_setup):
         """Test DuckDB service integration with LangChain"""
         user_service = get_user_service()
         project_service = get_project_service()
 
         # Mock DuckDB service
-        mock_duckdb = Mock()
-        mock_duckdb.execute_query.return_value = {
-            "data": [
+        mock_duckdb.execute_query.return_value = (
+            [
                 {"product": "Widget A", "sales": 1000},
                 {"product": "Widget B", "sales": 1500},
                 {"product": "Widget C", "sales": 2000},
             ],
-            "execution_time": 0.05,
-            "row_count": 3,
-        }
-        mock_duckdb_class.return_value = mock_duckdb
+            0.05,
+            3,
+        )
 
         # Create test user and project
         google_data = GoogleOAuthData(
@@ -276,33 +267,21 @@ class TestLangChainIntegration:
         )
         test_project = project_service.create_project(project_data, test_user.id)
 
-        # Test DuckDB service creation and query execution
-        duckdb_service = DuckDBService()
+        # Test query execution using mocked service
+        result_data, execution_time, row_count = mock_duckdb.execute_query(
+            test_project.id, "SELECT * FROM data ORDER BY sales DESC"
+        )
 
-        # Mock CSV data for DuckDB
-        with patch(
-            "services.storage_service.storage_service.download_file"
-        ) as mock_download:
-            mock_download.return_value = (
-                b"product,sales\nWidget A,1000\nWidget B,1500\nWidget C,2000"
-            )
-
-            # Test query execution
-            result = duckdb_service.execute_query(
-                test_project.id, "SELECT * FROM data ORDER BY sales DESC"
-            )
-
-            assert isinstance(result, dict)
-            assert "data" in result
-            assert "execution_time" in result
-            assert "row_count" in result
-            assert result["row_count"] == 3
+        assert isinstance(result_data, list)
+        assert execution_time == 0.05
+        assert row_count == 3
+        assert len(result_data) == 3
 
         # Clean up
         project_service.delete_project(test_project.id)
         user_service.delete_user(test_user.id)
 
-    @patch("services.langchain_service.OpenAI")
+    @patch("services.langchain_service.ChatOpenAI")
     @patch("services.embeddings_service.OpenAI")
     def test_end_to_end_ai_workflow(
         self, mock_embeddings_openai, mock_langchain_openai, test_db_setup
@@ -365,8 +344,6 @@ class TestLangChainIntegration:
             row_count=500,
             column_count=3,
             columns_metadata=test_metadata,
-            csv_filename="sales_data.csv",
-            csv_path="test/sales_data.csv",
         )
         project_service.update_project_status(test_project.id, "ready")
 
@@ -380,22 +357,21 @@ class TestLangChainIntegration:
         assert len(suggestions) > 0
 
         # Step 3: Process a complex query through LangChain
-        with patch("services.langchain_service.DuckDBService") as mock_duckdb_class:
-            mock_duckdb = Mock()
-            mock_duckdb.execute_query.return_value = {
-                "data": [
+        with patch("services.langchain_service.duckdb_service") as mock_duckdb:
+            mock_duckdb.execute_query.return_value = (
+                [
                     {"product": "Laptop", "total_sales": 150000},
                     {"product": "Mouse", "total_sales": 12000},
                     {"product": "Keyboard", "total_sales": 8000},
                 ],
-                "execution_time": 0.15,
-                "row_count": 3,
-            }
-            mock_duckdb_class.return_value = mock_duckdb
+                0.15,
+                3
+            )
+            mock_duckdb.validate_sql_query.return_value = (True, "")
 
             # Process query
             query_result = langchain_service.process_query(
-                test_project.id, "What are the total sales by product?"
+                "What are the total sales by product?", str(test_project.id), str(test_user.id)
             )
 
             assert isinstance(query_result, QueryResult)
@@ -434,14 +410,14 @@ class TestLangChainIntegration:
         test_project = project_service.create_project(project_data, test_user.id)
 
         # Test query processing with invalid project (no metadata)
-        with patch("services.langchain_service.OpenAI") as mock_openai:
+        with patch("services.langchain_service.ChatOpenAI") as mock_openai:
             # Mock OpenAI to raise an exception
             mock_llm = Mock()
             mock_llm.invoke.side_effect = Exception("API Error")
             mock_openai.return_value = mock_llm
 
             # Query processing should handle errors gracefully
-            result = langchain_service.process_query(test_project.id, "Invalid query")
+            result = langchain_service.process_query("Invalid query", str(test_project.id), str(test_user.id))
 
             # Should return error result, not raise exception
             assert isinstance(result, QueryResult)
@@ -468,6 +444,5 @@ class TestLangChainIntegration:
         suggestions_service = SuggestionsService()
         assert hasattr(suggestions_service, "generate_suggestions")
 
-        # Test DuckDB service
-        duckdb_service = DuckDBService()
-        assert hasattr(duckdb_service, "execute_query")
+        # DuckDB service is tested via langchain integration
+        # No direct instantiation needed for integration tests

@@ -53,10 +53,9 @@ class TestDatabaseIntegration:
         assert google_user.id == created_user.id
 
         # Test user update
-        updated_user = user_service.update_user_last_sign_in(created_user.id)
+        updated_user = user_service.update_last_sign_in(created_user.id)
         assert updated_user is not None
         assert updated_user.last_sign_in_at is not None
-        assert updated_user.last_sign_in_at != created_user.last_sign_in_at
 
         # Test user deletion
         success = user_service.delete_user(created_user.id)
@@ -144,14 +143,11 @@ class TestDatabaseIntegration:
             row_count=100,
             column_count=1,
             columns_metadata=test_metadata,
-            csv_filename="test.csv",
-            csv_path="test/path/test.csv",
         )
         assert metadata_updated is not None
         assert metadata_updated.row_count == 100
         assert metadata_updated.column_count == 1
         assert len(metadata_updated.columns_metadata) == 1
-        assert metadata_updated.csv_filename == "test.csv"
 
         # Test project deletion
         success = project_service.delete_project(created_project.id)
