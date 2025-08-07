@@ -4,6 +4,7 @@ Provides JWT token validation and user context injection
 """
 
 import logging
+import os
 from functools import wraps
 from typing import Any, Callable, Dict, Optional, Tuple
 
@@ -208,16 +209,18 @@ class RateLimitMiddleware:
         self.requests_per_minute = requests_per_minute
         self.user_requests = {}  # In production, use Redis
         self.blocked_users = set()  # Temporarily blocked users
-        self.rate_limit_enabled = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
-        
+        self.rate_limit_enabled = (
+            os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
+        )
+
         # Different limits for different operations
         self.endpoint_limits = {
             "auth": 20,  # Auth operations
             "projects": 50,  # Project operations
             "chat": 30,  # Chat operations
-            "default": requests_per_minute
+            "default": requests_per_minute,
         }
-        
+
         logger.info(
             f"RateLimitMiddleware initialized with {requests_per_minute} requests/minute"
         )
@@ -233,70 +236,76 @@ class RateLimitMiddleware:
         else:
             return "default"
 
-    async def check_rate_limit(self, user_id: str, endpoint_path: str = "") -> Tuple[bool, Dict[str, Any]]:
+    async def check_rate_limit(
+        self, user_id: str, endpoint_path: str = ""
+    ) -> Tuple[bool, Dict[str, Any]]:
         """Check if user has exceeded rate limit"""
         if not self.rate_limit_enabled:
             return True, {}
-        
+
         # Check if user is temporarily blocked
         if user_id in self.blocked_users:
             return False, {
                 "reason": "Temporarily blocked due to excessive requests",
-                "retry_after": 300  # 5 minutes
+                "retry_after": 300,  # 5 minutes
             }
-        
+
         # Get appropriate limit for endpoint
         category = self._get_endpoint_category(endpoint_path)
         limit = self.endpoint_limits.get(category, self.endpoint_limits["default"])
-        
+
         # Get current time window
         import time
+
         current_time = time.time()
         window_start = int(current_time // 60) * 60  # Start of current minute
-        
+
         # Initialize user request tracking
         if user_id not in self.user_requests:
             self.user_requests[user_id] = {}
-        
+
         # Clean old windows (keep last 2 minutes for analysis)
         user_windows = self.user_requests[user_id]
         old_windows = [w for w in user_windows.keys() if w < window_start - 120]
         for old_window in old_windows:
             del user_windows[old_window]
-        
+
         # Count requests in current window
         current_requests = user_windows.get(window_start, 0)
-        
+
         if current_requests >= limit:
             # Check if user should be temporarily blocked
             recent_requests = sum(user_windows.values())
             if recent_requests >= limit * 3:  # 3x the limit across windows
                 self.blocked_users.add(user_id)
-                logger.warning(f"User {user_id} temporarily blocked for excessive requests")
+                logger.warning(
+                    f"User {user_id} temporarily blocked for excessive requests"
+                )
                 return False, {
                     "reason": "Temporarily blocked due to excessive requests",
-                    "retry_after": 300
+                    "retry_after": 300,
                 }
-            
+
             return False, {
                 "reason": "Rate limit exceeded",
                 "limit": limit,
                 "current": current_requests,
-                "retry_after": 60
+                "retry_after": 60,
             }
-        
+
         # Record this request
         user_windows[window_start] = current_requests + 1
-        
+
         return True, {
             "limit": limit,
             "current": current_requests + 1,
-            "remaining": limit - current_requests - 1
+            "remaining": limit - current_requests - 1,
         }
 
     async def apply_rate_limit(
-        self, current_user: Optional[UserInDB] = Depends(get_current_user_optional),
-        request: Request = None
+        self,
+        current_user: Optional[UserInDB] = Depends(get_current_user_optional),
+        request: Request = None,
     ) -> bool:
         """Apply rate limiting based on user"""
         if not current_user:
@@ -306,14 +315,14 @@ class RateLimitMiddleware:
 
         endpoint_path = str(request.url.path) if request else ""
         allowed, info = await self.check_rate_limit(str(current_user.id), endpoint_path)
-        
+
         if not allowed:
             raise HTTPException(
                 status_code=429,
                 detail=info.get("reason", "Rate limit exceeded"),
-                headers={"Retry-After": str(info.get("retry_after", 60))}
+                headers={"Retry-After": str(info.get("retry_after", 60))},
             )
-        
+
         return True
 
 
