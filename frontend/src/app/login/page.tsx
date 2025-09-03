@@ -13,14 +13,17 @@ import { useRouter, useSearchParams } from "next/navigation.js";
 import { GoogleLoginButton } from '@/components/auth/LoginButton';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { CloudArrowUpIcon, ChatBubbleLeftRightIcon, MagnifyingGlassIcon, ChartBarIcon, ShieldCheckIcon, TableCellsIcon } from "@heroicons/react/24/outline";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 const FEATURES = [
-  { label: "Upload CSVs Instantly", icon: <CloudArrowUpIcon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" /> },
-  { label: "Ask Data Questions", icon: <ChatBubbleLeftRightIcon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" /> },
-  { label: "AI-Powered Insights", icon: <MagnifyingGlassIcon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" /> },
-  { label: "Visualize Results", icon: <ChartBarIcon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" /> },
-  { label: "Secure & Private", icon: <ShieldCheckIcon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" /> },
-  { label: "No SQL Needed", icon: <TableCellsIcon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" /> },
+  { label: "Upload CSVs Instantly", icon: <CloudArrowUpIcon className="h-5 w-5 text-muted-foreground" /> },
+  { label: "Ask Data Questions", icon: <ChatBubbleLeftRightIcon className="h-5 w-5 text-muted-foreground" /> },
+  { label: "AI-Powered Insights", icon: <MagnifyingGlassIcon className="h-5 w-5 text-muted-foreground" /> },
+  { label: "Visualize Results", icon: <ChartBarIcon className="h-5 w-5 text-muted-foreground" /> },
+  { label: "Secure & Private", icon: <ShieldCheckIcon className="h-5 w-5 text-muted-foreground" /> },
+  { label: "No SQL Needed", icon: <TableCellsIcon className="h-5 w-5 text-muted-foreground" /> },
 ];
 
 function LoginPageContent() {
@@ -63,66 +66,74 @@ function LoginPageContent() {
   };
 
   return (
-    <div className="fixed inset-0 min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-indigo-100 via-indigo-200 to-indigo-300 dark:from-gray-900 dark:via-indigo-950 dark:to-indigo-900 overflow-hidden select-none">
-      <div className="w-full max-w-md mx-auto flex flex-col items-center gap-8 p-6">
+    <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md mx-auto flex flex-col items-center gap-6">
         {/* Logo + SmartQuery */}
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-3">
           <Image src="/smartquery-logo.svg" alt="SmartQuery Logo" width={64} height={64} className="w-16 h-16" />
-          <span className="text-3xl md:text-4xl font-bold text-indigo-700 dark:text-indigo-400 tracking-tight">SmartQuery</span>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">SmartQuery</h1>
         </div>
+        
         {/* Welcome Text */}
-        <div className="text-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome to SmartQuery</h2>
-          <p className="text-base md:text-lg text-gray-700 dark:text-gray-200">Sign in to access your data analysis dashboard</p>
+        <div className="text-center space-y-2">
+          <h2 className="text-xl font-semibold text-foreground">Welcome back</h2>
+          <p className="text-sm text-muted-foreground">Sign in to access your data analysis dashboard</p>
         </div>
         {/* Error Display */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4 w-full">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">Authentication Error</h3>
-                <div className="mt-2 text-sm text-red-700">
-                  <p>{error}</p>
+          <Card className="w-full border-destructive/50 bg-destructive/10">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 mt-0.5">
+                  <svg className="h-4 w-4 text-destructive" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-destructive mb-1">Authentication Error</h3>
+                  <p className="text-sm text-destructive/80">{error}</p>
                 </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
         {/* Login Card */}
-        <div className="w-full bg-white dark:bg-gray-950 py-8 px-6 shadow-xl rounded-2xl flex flex-col gap-6">
-          <GoogleLoginButton size="lg" redirectTo="/dashboard" className="w-full" showIcon={true} />
-          {/* Dev Login Button for testing */}
-          <button
-            onClick={handleDevLogin}
-            className="w-full mt-2 py-3 rounded-xl bg-indigo-200 dark:bg-indigo-700 text-indigo-900 dark:text-white font-semibold text-base hover:bg-indigo-300 dark:hover:bg-indigo-600 transition-colors"
-            type="button"
-          >
-            Dev Login (Bypass)
-          </button>
-        </div>
+        <Card className="w-full">
+          <CardContent className="p-6 space-y-4">
+            <GoogleLoginButton size="lg" redirectTo="/dashboard" className="w-full" showIcon={true} />
+            {/* Dev Login Button for testing */}
+            <Button 
+              onClick={handleDevLogin}
+              variant="secondary"
+              className="w-full"
+              type="button"
+            >
+              Dev Login (Bypass)
+            </Button>
+          </CardContent>
+        </Card>
         {/* Features Preview */}
-        <div className="w-full bg-white dark:bg-gray-950 rounded-2xl p-6 shadow flex flex-col gap-4">
-          <h3 className="text-lg font-semibold text-indigo-700 dark:text-indigo-200 mb-2">What you can do with SmartQuery</h3>
-          <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            {FEATURES.map((f) => (
-              <li key={f.label} className="flex items-center gap-3 text-base font-medium text-indigo-700 dark:text-indigo-300 tracking-wide">
-                {f.icon}
-                {f.label}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle className="text-base">What you can do with SmartQuery</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {FEATURES.map((f) => (
+                <div key={f.label} className="flex items-center gap-3 text-sm text-muted-foreground">
+                  {f.icon}
+                  <span>{f.label}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
         {/* Footer */}
         <div className="text-center w-full">
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-muted-foreground">
             By signing in, you agree to our{' '}
-            <a href="/terms-of-service" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-500 underline">Terms of Service</a>{' '}and{' '}
-            <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-500 underline">Privacy Policy</a>
+            <a href="/terms-of-service" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Terms of Service</a>{' '}and{' '}
+            <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Privacy Policy</a>
           </p>
         </div>
       </div>
@@ -133,10 +144,10 @@ function LoginPageContent() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center space-y-4">
-          <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     }>
