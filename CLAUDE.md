@@ -8,6 +8,24 @@ SmartQuery is a natural language CSV querying application built as a monorepo. U
 
 **Architecture**: Next.js 14 frontend + FastAPI backend with PostgreSQL, Redis, MinIO, and Celery for background processing.
 
+“ You’re an engineer building this codebase.
+You've been given http://architecture.md and http://tasks.md.
+- Read both carefully. There should be no ambiguity about what we’re building.
+- Follow http://tasks.md and complete one task at a time.
+- After each task, stop. I’ll test it. If it works, commit to GitHub and move to the next. "
+
+Include this as well - this is crucial:
+
+### CODING PROTOCOL ###
+" Coding Instructions
+
+- Write the absolute minimum code required
+- No sweeping changes
+- No unrelated edits - focus on just the task you're on
+- Make code precise, modular, testable
+- Don’t break existing functionality
+- If I need to do anything (e.g. Supabase/AWS config), tell me clearly  "
+
 ## Development Commands
 
 ### Root Commands (Turborepo)
@@ -54,7 +72,7 @@ docker-compose logs -f     # View logs
 
 ### Frontend (Next.js 14)
 - **Framework**: Next.js 14 with TypeScript and App Router
-- **Styling**: Tailwind CSS with DaisyUI components
+- **Styling**: Tailwind CSS with shadcn/ui components
 - **State Management**: Zustand stores in `src/lib/store/`
 - **API Client**: Centralized in `src/lib/api.ts` with retry logic
 - **Charts**: Recharts for data visualization
