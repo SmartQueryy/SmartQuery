@@ -37,23 +37,23 @@ export function BentoGrid({ projects, isLoading, onProjectsUpdate, onProjectClic
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className="bg-white dark:bg-gray-950 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 h-48 animate-pulse"
+            className="rounded-lg border bg-card h-40 animate-pulse"
           >
             <div className="p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-lg" />
+                <div className="w-8 h-8 bg-muted rounded-lg" />
                 <div className="space-y-2">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24" />
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16" />
+                  <div className="h-4 bg-muted rounded w-24" />
+                  <div className="h-3 bg-muted rounded w-16" />
                 </div>
               </div>
               <div className="space-y-2">
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full" />
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+                <div className="h-3 bg-muted rounded w-full" />
+                <div className="h-3 bg-muted rounded w-3/4" />
               </div>
             </div>
           </div>
@@ -64,7 +64,7 @@ export function BentoGrid({ projects, isLoading, onProjectsUpdate, onProjectClic
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 auto-rows-max">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <NewProjectTile onClick={() => setIsModalOpen(true)} />
         
         {projects.map((project) => (
