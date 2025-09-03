@@ -10,7 +10,7 @@
 import React, { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useAuthStore } from '@/lib/store/auth';
 import { refreshToken, logout as authLogout } from '@/lib/auth';
-import { api } from '@/lib/api';
+import { api, apiClient } from '@/lib/api';
 import type { User } from '@/lib/types';
 
 interface AuthContextType {
@@ -58,6 +58,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Load session from localStorage
         loadSession();
         
+        // Set initial token in API client
+        const currentToken = accessToken || localStorage.getItem('access_token');
+        if (currentToken) {
+          apiClient.setAccessToken(currentToken);
+        }
+        
         // If we have tokens, verify them with the server
         if (isAuthenticated && accessToken) {
           try {
@@ -66,7 +72,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             
             if (response.success && response.data) {
               // Token is valid, update user info
-              setUser(response.data.user);
+              setUser(response.data);
             } else {
               // Token is invalid, clear session
               await handleLogout();
@@ -95,6 +101,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setUser(user);
       setTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresAt - Date.now());
+      apiClient.setAccessToken(tokens.accessToken);
       setError(null);
     } catch (error) {
       console.error('Login failed:', error);
@@ -122,6 +129,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Clear local state
       clearTokens();
       clearUser();
+      apiClient.setAccessToken(null);
       setError(null);
     } catch (error) {
       console.error('Logout failed:', error);
@@ -142,6 +150,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       // Update tokens in store
       setTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresAt - Date.now());
+      apiClient.setAccessToken(tokens.accessToken);
       setError(null);
     } catch (error) {
       console.error('Token refresh failed:', error);

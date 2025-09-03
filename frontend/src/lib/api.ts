@@ -1,67 +1,199 @@
-// Basic API client for tests
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import { 
+  ApiResponse, 
+  User, 
+  LoginRequest, 
+  AuthResponse, 
+  Project, 
+  CreateProjectRequest, 
+  CreateProjectResponse, 
+  UploadStatusResponse, 
+  PaginationParams, 
+  PaginatedResponse,
+  SendMessageRequest,
+  SendMessageResponse,
+  CSVPreview,
+  QuerySuggestion,
+  ChatMessage,
+  HealthStatus
+} from '../../../shared/api-contract';
+
+const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
+class ApiClient {
+  private client: AxiosInstance;
+  private accessToken: string | null = null;
+
+  constructor() {
+    this.client = axios.create({
+      baseURL: BASE_URL,
+      timeout: 30000,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    this.setupInterceptors();
+  }
+
+  private setupInterceptors() {
+    this.client.interceptors.request.use((config) => {
+      if (this.accessToken) {
+        config.headers.Authorization = `Bearer ${this.accessToken}`;
+      }
+      return config;
+    });
+
+    this.client.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        if (error.response?.status === 401 && this.accessToken) {
+          this.accessToken = null;
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+        }
+        return Promise.reject(error);
+      }
+    );
+  }
+
+  setAccessToken(token: string | null) {
+    this.accessToken = token;
+    if (token) {
+      localStorage.setItem('access_token', token);
+    } else {
+      localStorage.removeItem('access_token');
+    }
+  }
+
+  async request<T>(config: AxiosRequestConfig): Promise<ApiResponse<T>> {
+    try {
+      const response = await this.client.request(config);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data) {
+        return error.response.data;
+      }
+      return {
+        success: false,
+        error: error.message || 'Network error occurred',
+      };
+    }
+  }
+}
+
+const apiClient = new ApiClient();
+
 export const api = {
   auth: {
-    googleLogin: async (data: { google_token: string }) => {
-      // Mock implementation
-      return {
-        success: true,
-        data: {
-          user: {
-            id: '1',
-            name: 'Test User',
-            email: 'test@example.com',
-            avatar_url: '',
-            created_at: '2024-01-01T00:00:00Z',
-            last_sign_in_at: '2024-01-01T12:00:00Z',
-          },
-          access_token: 'mock-access-token',
-          refresh_token: 'mock-refresh-token',
-          expires_in: 3600,
-        },
-      };
+    googleLogin: async (data: LoginRequest): Promise<ApiResponse<AuthResponse>> => {
+      return apiClient.request({
+        method: 'POST',
+        url: '/auth/google',
+        data,
+      });
     },
-    getCurrentUser: async () => {
-      return {
-        success: true,
-        data: {
-          user: {
-            id: '1',
-            name: 'Test User',
-            email: 'test@example.com',
-            avatar_url: '',
-            created_at: '2024-01-01T00:00:00Z',
-            last_sign_in_at: '2024-01-01T12:00:00Z',
-          },
-        },
-      };
+    getCurrentUser: async (): Promise<ApiResponse<User>> => {
+      return apiClient.request({
+        method: 'GET',
+        url: '/auth/me',
+      });
     },
-    logout: async () => ({ success: true }),
-    refreshToken: async () => ({
-      success: true,
-      data: {
-        access_token: 'new-mock-access-token',
-        refresh_token: 'new-mock-refresh-token',
-        expires_in: 3600,
-      },
-    }),
+    logout: async (): Promise<ApiResponse<{ message: string }>> => {
+      return apiClient.request({
+        method: 'POST',
+        url: '/auth/logout',
+      });
+    },
+    refreshToken: async (refresh_token: string): Promise<ApiResponse<AuthResponse>> => {
+      return apiClient.request({
+        method: 'POST',
+        url: '/auth/refresh',
+        data: { refresh_token },
+      });
+    },
   },
   projects: {
-    getProjects: async () => ({ success: true, data: [] }),
-    createProject: async (data: any) => ({ success: true, data: { id: '1', name: data.name } }),
-    getProject: async (id: string) => ({ success: true, data: { id, name: 'Mock Project' } }),
-    deleteProject: async (id: string) => ({ success: true }),
-    getUploadUrl: async (projectId: string) => ({ success: true, data: { upload_url: 'http://mock.upload.url' } }),
-    getProjectStatus: async (projectId: string) => ({ success: true, data: { status: 'completed' } }),
+    getProjects: async (params?: PaginationParams): Promise<ApiResponse<PaginatedResponse<Project>>> => {
+      return apiClient.request({
+        method: 'GET',
+        url: '/projects',
+        params,
+      });
+    },
+    createProject: async (data: CreateProjectRequest): Promise<ApiResponse<CreateProjectResponse>> => {
+      return apiClient.request({
+        method: 'POST',
+        url: '/projects',
+        data,
+      });
+    },
+    getProject: async (id: string): Promise<ApiResponse<Project>> => {
+      return apiClient.request({
+        method: 'GET',
+        url: `/projects/${id}`,
+      });
+    },
+    deleteProject: async (id: string): Promise<ApiResponse<{ message: string }>> => {
+      return apiClient.request({
+        method: 'DELETE',
+        url: `/projects/${id}`,
+      });
+    },
+    getUploadUrl: async (projectId: string): Promise<ApiResponse<{ upload_url: string; upload_fields: Record<string, string> }>> => {
+      return apiClient.request({
+        method: 'GET',
+        url: `/projects/${projectId}/upload-url`,
+      });
+    },
+    getProjectStatus: async (projectId: string): Promise<ApiResponse<UploadStatusResponse>> => {
+      return apiClient.request({
+        method: 'GET',
+        url: `/projects/${projectId}/status`,
+      });
+    },
   },
   chat: {
-    sendMessage: async (projectId: string, message: string) => ({ success: true, data: { message: 'Mock response', result_type: 'text', result: 'Mock result' } }),
-    getMessages: async (projectId: string) => ({ success: true, data: [] }),
-    getPreview: async (projectId: string) => ({ success: true, data: { headers: ['col1'], rows: [['val1']] } }),
-    getSuggestions: async (projectId: string) => ({ success: true, data: ['suggestion1'] }),
+    sendMessage: async (projectId: string, message: string, context?: string[]): Promise<ApiResponse<SendMessageResponse>> => {
+      return apiClient.request({
+        method: 'POST',
+        url: `/chat/${projectId}/message`,
+        data: { project_id: projectId, message, context },
+      });
+    },
+    getMessages: async (projectId: string, params?: PaginationParams): Promise<ApiResponse<PaginatedResponse<ChatMessage>>> => {
+      return apiClient.request({
+        method: 'GET',
+        url: `/chat/${projectId}/messages`,
+        params,
+      });
+    },
+    getPreview: async (projectId: string): Promise<ApiResponse<CSVPreview>> => {
+      return apiClient.request({
+        method: 'GET',
+        url: `/chat/${projectId}/preview`,
+      });
+    },
+    getSuggestions: async (projectId: string): Promise<ApiResponse<QuerySuggestion[]>> => {
+      return apiClient.request({
+        method: 'GET',
+        url: `/chat/${projectId}/suggestions`,
+      });
+    },
   },
   system: {
-    healthCheck: async () => ({ success: true }),
-    systemStatus: async () => ({ success: true, data: { status: 'healthy' } }),
+    healthCheck: async (): Promise<ApiResponse<HealthStatus>> => {
+      return apiClient.request({
+        method: 'GET',
+        url: '/health',
+      });
+    },
+    systemStatus: async (): Promise<ApiResponse<{ message: string; status: string }>> => {
+      return apiClient.request({
+        method: 'GET',
+        url: '/',
+      });
+    },
   },
 };
 
@@ -69,4 +201,7 @@ export const api = {
 export const authApi = api.auth;
 export const projectApi = api.projects;
 export const chatApi = api.chat;
-export const systemApi = api.system; 
+export const systemApi = api.system;
+
+// Export the API client instance for token management
+export { apiClient }; 

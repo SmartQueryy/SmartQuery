@@ -6,21 +6,83 @@
 
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { BentoGrid } from '@/components/dashboard/bento-grid';
+import { api } from '@/lib/api';
 import { CloudArrowUpIcon, FolderOpenIcon, QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
+import type { Project } from '../../../../shared/api-contract';
 
 function DashboardContent() {
   const { user, logout } = useAuth();
+  const router = useRouter();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const response = await api.projects.getProjects();
+        
+        if (response.success && response.data) {
+          setProjects(response.data.items);
+        } else {
+          setError(response.error || 'Failed to fetch projects');
+        }
+      } catch (err) {
+        setError('Failed to fetch projects');
+        console.error('Project fetch error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchProjects();
+    }
+  }, [user]);
 
   const handleLogout = async () => {
     await logout();
   };
 
+  const getProjectStats = () => {
+    const total = projects.length;
+    const ready = projects.filter(p => p.status === 'ready').length;
+    const processing = projects.filter(p => p.status === 'processing').length;
+    return { total, ready, processing };
+  };
+
+  const { total, ready, processing } = getProjectStats();
+
+  const fetchProjects = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await api.projects.getProjects();
+      
+      if (response.success && response.data) {
+        setProjects(response.data.items);
+      } else {
+        setError(response.error || 'Failed to fetch projects');
+      }
+    } catch (err) {
+      setError('Failed to fetch projects');
+      console.error('Project fetch error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-indigo-100 via-indigo-200 to-indigo-300 dark:from-gray-900 dark:via-indigo-950 dark:to-indigo-900 overflow-hidden select-none">
-      <div className="w-full max-w-4xl mx-auto flex flex-col gap-8 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col gap-8">
         {/* Welcome Header */}
         <div className="flex flex-col items-center gap-2 mb-2">
           <h1 className="text-3xl md:text-4xl font-bold text-indigo-700 dark:text-indigo-400 tracking-tight">Welcome back, {user?.name || 'User'}!</h1>
@@ -55,41 +117,41 @@ function DashboardContent() {
               <FolderOpenIcon className="w-7 h-7 text-indigo-700 dark:text-indigo-200" />
             </div>
             <div className="text-lg font-semibold text-indigo-700 dark:text-indigo-200">Total Projects</div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">0</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{isLoading ? '...' : total}</div>
           </div>
           <div className="bg-white dark:bg-gray-950 rounded-2xl shadow-xl p-6 flex flex-col items-center">
             <div className="w-12 h-12 bg-green-200 dark:bg-green-700 rounded-full flex items-center justify-center mb-2">
               <CloudArrowUpIcon className="w-7 h-7 text-green-700 dark:text-green-200" />
             </div>
             <div className="text-lg font-semibold text-green-700 dark:text-green-200">Ready Projects</div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">0</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{isLoading ? '...' : ready}</div>
           </div>
           <div className="bg-white dark:bg-gray-950 rounded-2xl shadow-xl p-6 flex flex-col items-center">
             <div className="w-12 h-12 bg-yellow-200 dark:bg-yellow-700 rounded-full flex items-center justify-center mb-2">
               <QuestionMarkCircleIcon className="w-7 h-7 text-yellow-700 dark:text-yellow-200" />
             </div>
             <div className="text-lg font-semibold text-yellow-700 dark:text-yellow-200">Processing</div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">0</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{isLoading ? '...' : processing}</div>
           </div>
         </div>
-        {/* Quick Actions */}
-        <div className="w-full bg-white dark:bg-gray-950 rounded-2xl shadow-xl p-6 flex flex-col gap-4">
-          <h3 className="text-lg font-semibold text-indigo-700 dark:text-indigo-200 mb-2">Quick Actions</h3>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <button className="w-full py-3 rounded-xl bg-indigo-700 dark:bg-indigo-500 text-white font-semibold text-base hover:bg-indigo-800 dark:hover:bg-indigo-600 transition-colors flex items-center justify-center gap-2">
-              <CloudArrowUpIcon className="w-5 h-5" />
-              Upload CSV File
-            </button>
-            <button className="w-full py-3 rounded-xl bg-indigo-200 dark:bg-indigo-700 text-indigo-900 dark:text-white font-semibold text-base hover:bg-indigo-300 dark:hover:bg-indigo-600 transition-colors flex items-center justify-center gap-2">
-              <FolderOpenIcon className="w-5 h-5" />
-              View Projects
-            </button>
-            <button className="w-full py-3 rounded-xl bg-white dark:bg-gray-900 border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-200 font-semibold text-base hover:bg-indigo-50 dark:hover:bg-indigo-800 transition-colors flex items-center justify-center gap-2">
-              <QuestionMarkCircleIcon className="w-5 h-5" />
-              Get Help
-            </button>
+        {/* Error Display */}
+        {error && (
+          <div className="w-full bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-xl p-4">
+            <p className="text-red-700 dark:text-red-200">{error}</p>
           </div>
+        )}
+
+        {/* Projects Grid */}
+        <div className="w-full">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">Your Projects</h3>
+          <BentoGrid 
+            projects={projects}
+            isLoading={isLoading}
+            onProjectsUpdate={fetchProjects}
+            onProjectClick={(projectId) => router.push(`/workspace/${projectId}`)}
+          />
         </div>
+
         {/* Sign Out Button */}
         <div className="flex justify-center mt-4">
           <button
@@ -98,6 +160,7 @@ function DashboardContent() {
           >
             Sign Out
           </button>
+        </div>
         </div>
       </div>
     </div>
