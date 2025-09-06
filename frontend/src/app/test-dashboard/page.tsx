@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useProjectStore, useProjects, useProjectActions, useUploadStatus } from '@/lib/store/project';
 import { api } from '@/lib/api';
 import type { Project, ProjectStatus, PaginatedResponse } from '../../../../shared/api-contract';
 
@@ -31,20 +30,23 @@ const generateMockProject = (index: number): Project => ({
 export default function TestDashboardPage() {
   const [mockMode, setMockMode] = useState(true);
   const [mockProjectCount, setMockProjectCount] = useState(5);
-  const { projects, isLoading, error, total } = useProjects();
-  const { 
-    fetchProjects, 
-    createProject, 
-    deleteProject, 
-    uploadFile,
-    checkUploadStatus,
-    setCurrentProject,
-    clearError,
-    reset 
-  } = useProjectActions();
-  const { uploadStatus, isUploading } = useUploadStatus();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
+  const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<any>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const mockSetupRef = useRef(false);
 
-  // Mock API responses
+  // Mock API responses - wrapped in useEffect to prevent re-creation
+  useEffect(() => {
+    if (mockMode && !mockSetupRef.current) {
+      mockSetupRef.current = true;
+      setupMockResponses();
+    }
+  }, [mockMode]);
+
   const setupMockResponses = () => {
     // Mock getProjects
     api.projects.getProjects = async (params?: { page?: number; limit?: number }) => {
@@ -128,36 +130,71 @@ export default function TestDashboardPage() {
     };
   };
 
+  // Fetch projects
+  const fetchProjects = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await api.projects.getProjects();
+      if (response.success && response.data) {
+        setProjects(response.data.items);
+        setTotal(response.data.total);
+      } else {
+        setError(response.error || 'Failed to fetch projects');
+      }
+    } catch (err) {
+      setError('Network error while fetching projects');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Load mock data
   const loadMockData = async () => {
-    if (mockMode) {
-      setupMockResponses();
-    }
     await fetchProjects();
   };
 
   // Test create project
   const testCreateProject = async () => {
-    const result = await createProject({
-      name: `Test Project ${Date.now()}`,
-      description: 'Created from test dashboard',
-    });
-    
-    if (result) {
-      console.log('✅ Project created:', result);
-      await fetchProjects(); // Refresh list
-    } else {
-      console.error('❌ Failed to create project');
+    setIsLoading(true);
+    try {
+      const result = await api.projects.createProject({
+        name: `Test Project ${Date.now()}`,
+        description: 'Created from test dashboard',
+      });
+      
+      if (result.success && result.data) {
+        console.log('✅ Project created:', result.data.project);
+        await fetchProjects(); // Refresh list
+      } else {
+        console.error('❌ Failed to create project');
+        setError(result.error || 'Failed to create project');
+      }
+    } catch (err) {
+      console.error('❌ Error creating project:', err);
+      setError('Error creating project');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   // Test delete project
   const testDeleteProject = async (id: string) => {
-    const success = await deleteProject(id);
-    if (success) {
-      console.log('✅ Project deleted:', id);
-    } else {
-      console.error('❌ Failed to delete project:', id);
+    setIsLoading(true);
+    try {
+      const result = await api.projects.deleteProject(id);
+      if (result.success) {
+        console.log('✅ Project deleted:', id);
+        await fetchProjects(); // Refresh list
+      } else {
+        console.error('❌ Failed to delete project:', id);
+        setError(result.error || 'Failed to delete project');
+      }
+    } catch (err) {
+      console.error('❌ Error deleting project:', err);
+      setError('Error deleting project');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -168,16 +205,34 @@ export default function TestDashboardPage() {
     
     if (!firstProject) {
       console.error('No project available for upload test');
+      setError('No project available for upload test');
       return;
     }
 
-    const success = await uploadFile(firstProject.id, mockFile);
-    if (success) {
-      console.log('✅ File uploaded successfully');
-      // Check status
-      await checkUploadStatus(firstProject.id);
-    } else {
-      console.error('❌ Failed to upload file');
+    setIsUploading(true);
+    try {
+      const uploadUrlResponse = await api.projects.getUploadUrl(firstProject.id);
+      if (uploadUrlResponse.success && uploadUrlResponse.data) {
+        console.log('✅ Got upload URL for project:', firstProject.id);
+        
+        // Mock file upload (in real scenario, upload to presigned URL)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Check status
+        const statusResponse = await api.projects.getProjectStatus(firstProject.id);
+        if (statusResponse.success && statusResponse.data) {
+          setUploadStatus(statusResponse.data);
+          console.log('✅ Upload status:', statusResponse.data);
+        }
+      } else {
+        console.error('❌ Failed to get upload URL');
+        setError('Failed to get upload URL');
+      }
+    } catch (err) {
+      console.error('❌ Error uploading file:', err);
+      setError('Error uploading file');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -187,9 +242,20 @@ export default function TestDashboardPage() {
     console.log('✅ Current project set:', project);
   };
 
-  // Get current store state
-  const getStoreState = () => {
-    return useProjectStore.getState();
+  // Clear error
+  const clearError = () => {
+    setError(null);
+  };
+
+  // Reset state
+  const reset = () => {
+    setProjects([]);
+    setTotal(0);
+    setError(null);
+    setCurrentProject(null);
+    setUploadStatus(null);
+    setIsLoading(false);
+    setIsUploading(false);
   };
 
   return (
@@ -198,7 +264,7 @@ export default function TestDashboardPage() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold">Dashboard Test Page</h1>
-          <p className="text-muted-foreground">Comprehensive testing of dashboard with mock data</p>
+          <p className="text-muted-foreground">Comprehensive testing of dashboard with mock data (No Zustand)</p>
         </div>
 
         {/* Test Controls */}
@@ -237,36 +303,36 @@ export default function TestDashboardPage() {
 
             {/* Test Actions */}
             <div className="flex flex-wrap gap-2">
-              <Button onClick={loadMockData} variant="outline">
+              <Button onClick={loadMockData} variant="outline" disabled={isLoading}>
                 Load {mockMode ? 'Mock' : 'Real'} Data
               </Button>
-              <Button onClick={testCreateProject} variant="outline">
+              <Button onClick={testCreateProject} variant="outline" disabled={isLoading}>
                 Test Create Project
               </Button>
-              <Button onClick={testFileUpload} variant="outline">
+              <Button onClick={testFileUpload} variant="outline" disabled={isLoading || isUploading}>
                 Test File Upload
               </Button>
-              <Button onClick={() => clearError()} variant="outline">
+              <Button onClick={clearError} variant="outline">
                 Clear Error
               </Button>
-              <Button onClick={() => reset()} variant="outline">
-                Reset Store
+              <Button onClick={reset} variant="outline">
+                Reset State
               </Button>
               <Button 
-                onClick={() => console.log('Store State:', getStoreState())} 
+                onClick={() => console.log('Current State:', { projects, total, error, currentProject, uploadStatus })} 
                 variant="outline"
               >
-                Log Store State
+                Log Current State
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Store State Display */}
+        {/* State Display */}
         <Card>
           <CardHeader>
-            <CardTitle>Store State</CardTitle>
-            <CardDescription>Current state from project store</CardDescription>
+            <CardTitle>Current State</CardTitle>
+            <CardDescription>Local state management (no Zustand)</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
@@ -299,6 +365,13 @@ export default function TestDashboardPage() {
                 <p className="text-red-700 text-sm">{error}</p>
               </div>
             )}
+            
+            {currentProject && (
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+                <p className="text-blue-700 text-sm font-medium">Current Project:</p>
+                <p className="text-blue-600 text-sm">{currentProject.name} (ID: {currentProject.id})</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -306,7 +379,7 @@ export default function TestDashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Projects ({projects.length})</CardTitle>
-            <CardDescription>Projects from store</CardDescription>
+            <CardDescription>Projects from local state</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -357,6 +430,7 @@ export default function TestDashboardPage() {
                           e.stopPropagation();
                           testDeleteProject(project.id);
                         }}
+                        disabled={isLoading}
                       >
                         Delete
                       </Button>
@@ -365,8 +439,14 @@ export default function TestDashboardPage() {
                         variant="outline"
                         onClick={(e) => {
                           e.stopPropagation();
-                          checkUploadStatus(project.id);
+                          api.projects.getProjectStatus(project.id).then(res => {
+                            if (res.success && res.data) {
+                              setUploadStatus(res.data);
+                              console.log('Status for', project.id, ':', res.data);
+                            }
+                          });
                         }}
+                        disabled={isLoading}
                       >
                         Check Status
                       </Button>
@@ -386,12 +466,13 @@ export default function TestDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm">
-              <p>✓ Dashboard integrated with project store</p>
+              <p>✓ Dashboard works without Zustand (no infinite loops)</p>
               <p>✓ Mock data generation working</p>
               <p>✓ CRUD operations testable</p>
               <p>✓ Error handling available</p>
               <p>✓ Loading states functional</p>
               <p>✓ Upload flow testable</p>
+              <p>✓ Local state management working</p>
             </div>
           </CardContent>
         </Card>

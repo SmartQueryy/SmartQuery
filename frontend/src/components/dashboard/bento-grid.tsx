@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { ProjectTile } from './project-tile';
 import { NewProjectTile } from './new-project-tile';
 import { NewProjectModal } from './new-project-modal';
-import { useProjectActions } from '@/lib/store/project';
+import { api } from '@/lib/api';
 import type { Project } from '../../../../shared/api-contract';
 
 interface BentoGridProps {
@@ -17,19 +17,22 @@ interface BentoGridProps {
 export function BentoGrid({ projects, isLoading, onProjectsUpdate, onProjectClick }: BentoGridProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
-  const { deleteProject } = useProjectActions();
 
   const handleDeleteProject = async (projectId: string) => {
-    setIsDeleting(projectId);
-    const success = await deleteProject(projectId);
-    
-    if (success) {
-      onProjectsUpdate();
-    } else {
-      console.error('Delete failed');
+    try {
+      setIsDeleting(projectId);
+      const response = await api.projects.deleteProject(projectId);
+      
+      if (response.success) {
+        onProjectsUpdate();
+      } else {
+        console.error('Delete failed:', response.error);
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+    } finally {
+      setIsDeleting(null);
     }
-    
-    setIsDeleting(null);
   };
 
   if (isLoading) {

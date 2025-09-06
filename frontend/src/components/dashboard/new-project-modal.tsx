@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useProjectActions, useUploadStatus } from '@/lib/store/project';
+import { api } from '@/lib/api';
 import { XMarkIcon, CloudArrowUpIcon, DocumentIcon } from '@heroicons/react/24/outline';
 import type { CreateProjectRequest } from '../../../../shared/api-contract';
 
@@ -18,9 +18,6 @@ export function NewProjectModal({ isOpen, onClose, onProjectCreated }: NewProjec
   const [isCreating, setIsCreating] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  
-  const { createProject, uploadFile, checkUploadStatus } = useProjectActions();
-  const { uploadStatus } = useUploadStatus();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -38,7 +35,28 @@ export function NewProjectModal({ isOpen, onClose, onProjectCreated }: NewProjec
     }
   };
 
-  // uploadFileToUrl functionality is now handled by the project store
+  const uploadFileToUrl = async (uploadUrl: string, file: File, uploadFields: Record<string, string>) => {
+    const formData = new FormData();
+    
+    // Add all required fields from the backend
+    Object.entries(uploadFields).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
+    
+    // Add the file last
+    formData.append('file', file);
+
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Upload failed: ${response.statusText}`);
+    }
+
+    return response;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,23 +82,18 @@ export function NewProjectModal({ isOpen, onClose, onProjectCreated }: NewProjec
         description: description.trim() || undefined,
       };
 
-      const project = await createProject(projectData);
+      const createResponse = await api.projects.createProject(projectData);
 
-      if (!project) {
-        setError('Failed to create project');
+      if (!createResponse.success || !createResponse.data) {
+        setError(createResponse.error || 'Failed to create project');
         return;
       }
 
+      const { project, upload_url, upload_fields } = createResponse.data;
       setUploadProgress(25);
 
-      // Step 2: Upload file using project store
-      const uploadSuccess = await uploadFile(project.id, csvFile);
-      
-      if (!uploadSuccess) {
-        setError('Failed to upload file');
-        return;
-      }
-      
+      // Step 2: Upload file using presigned URL
+      await uploadFileToUrl(upload_url, csvFile, upload_fields);
       setUploadProgress(75);
 
       // Step 3: Wait for processing to complete
@@ -88,22 +101,29 @@ export function NewProjectModal({ isOpen, onClose, onProjectCreated }: NewProjec
       const maxAttempts = 30; // 30 seconds max wait
       
       while (attempts < maxAttempts) {
-        await checkUploadStatus(project.id);
+        const statusResponse = await api.projects.getProjectStatus(project.id);
         
-        if (uploadStatus?.status === 'ready') {
-          setUploadProgress(100);
-          onProjectCreated();
-          handleClose();
-          return;
-        } else if (uploadStatus?.status === 'error') {
-          setError(uploadStatus.error || 'File processing failed');
-          return;
+        if (statusResponse.success && statusResponse.data) {
+          const status = statusResponse.data.status;
+          
+          if (status === 'ready') {
+            setUploadProgress(100);
+            onProjectCreated();
+            handleClose();
+            return;
+          } else if (status === 'error') {
+            setError(statusResponse.data.error || 'File processing failed');
+            return;
+          }
+          
+          // Still processing, wait and check again
+          setUploadProgress(75 + (attempts / maxAttempts) * 20);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          attempts++;
+        } else {
+          attempts++;
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
-        
-        // Still processing, wait and check again
-        setUploadProgress(75 + (attempts / maxAttempts) * 20);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        attempts++;
       }
 
       setError('File processing timed out. Please check the project status later.');
