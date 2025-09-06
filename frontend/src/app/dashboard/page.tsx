@@ -2,6 +2,7 @@
  * Dashboard Page
  * 
  * Protected dashboard page with modern shadcn/ui components and professional design.
+ * Integrated with Zustand project store for state management.
  */
 
 "use client";
@@ -13,9 +14,8 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { BentoGrid } from '@/components/dashboard/bento-grid';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { api } from '@/lib/api';
 import { FolderIcon, CheckCircleIcon, ClockIcon, AlertCircleIcon, LogOutIcon } from 'lucide-react';
+import { api } from '@/lib/api';
 import type { Project } from '../../../../shared/api-contract';
 
 function DashboardContent() {
@@ -27,6 +27,8 @@ function DashboardContent() {
 
   useEffect(() => {
     const fetchProjects = async () => {
+      if (!user) return;
+      
       try {
         setIsLoading(true);
         setError(null);
@@ -45,9 +47,7 @@ function DashboardContent() {
       }
     };
 
-    if (user) {
-      fetchProjects();
-    }
+    fetchProjects();
   }, [user]);
 
   const handleLogout = async () => {
@@ -178,9 +178,14 @@ function DashboardContent() {
           {error && (
             <Card className="border-destructive">
               <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <AlertCircleIcon className="h-4 w-4 text-destructive" />
-                  <p className="text-sm text-destructive">{error}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <AlertCircleIcon className="h-4 w-4 text-destructive" />
+                    <p className="text-sm text-destructive">{error}</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setError(null)}>
+                    Dismiss
+                  </Button>
                 </div>
               </CardContent>
             </Card>

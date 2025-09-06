@@ -16,6 +16,7 @@ interface ProjectState {
   total: number;
   hasMore: boolean;
   
+  // Actions
   fetchProjects: (page?: number, limit?: number) => Promise<void>;
   fetchProject: (id: string) => Promise<void>;
   createProject: (data: CreateProjectRequest) => Promise<Project | null>;
@@ -27,7 +28,9 @@ interface ProjectState {
   reset: () => void;
 }
 
-export const useProjectStore = create<ProjectState>((set, get) => ({
+// Create the store with stable function references
+export const useProjectStoreFixed = create<ProjectState>()((set, get) => ({
+  // State
   projects: [],
   currentProject: null,
   uploadStatus: null,
@@ -41,6 +44,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   total: 0,
   hasMore: false,
 
+  // Actions - these are stable references
   fetchProjects: async (page = 1, limit = 10) => {
     set({ isLoading: true, error: null });
     try {
@@ -243,8 +247,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 }));
 
-export const useProjects = () => {
-  return useProjectStore((state) => ({
+// Selector hooks with stable references
+export const useProjectsData = () => {
+  return useProjectStoreFixed((state) => ({
     projects: state.projects,
     isLoading: state.isLoading,
     error: state.error,
@@ -253,27 +258,27 @@ export const useProjects = () => {
   }));
 };
 
-export const useCurrentProject = () => {
-  return useProjectStore((state) => state.currentProject);
-};
-
-export const useProjectActions = () => {
-  return useProjectStore((state) => ({
+export const useProjectsActions = () => {
+  return useProjectStoreFixed((state) => ({
     fetchProjects: state.fetchProjects,
     createProject: state.createProject,
     deleteProject: state.deleteProject,
     uploadFile: state.uploadFile,
     setCurrentProject: state.setCurrentProject,
     fetchProject: state.fetchProject,
+    checkUploadStatus: state.checkUploadStatus,
     clearError: state.clearError,
     reset: state.reset,
   }));
 };
 
-export const useUploadStatus = () => {
-  return useProjectStore((state) => ({
+export const useCurrentProjectData = () => {
+  return useProjectStoreFixed((state) => state.currentProject);
+};
+
+export const useUploadStatusData = () => {
+  return useProjectStoreFixed((state) => ({
     uploadStatus: state.uploadStatus,
     isUploading: state.isUploading,
-    checkUploadStatus: state.checkUploadStatus,
   }));
 };
