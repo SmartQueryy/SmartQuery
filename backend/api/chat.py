@@ -17,12 +17,17 @@ from models.response_schemas import (
     SendMessageRequest,
     SendMessageResponse,
 )
-from services.langchain_service import langchain_service
 from services.project_service import get_project_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 project_service = get_project_service()
 logger = logging.getLogger(__name__)
+
+try:
+    from services.langchain_service import langchain_service
+except ImportError as e:
+    logger.warning(f"Langchain service not available: {e}")
+    langchain_service = None
 
 # Mock chat messages database
 MOCK_CHAT_MESSAGES = {}
