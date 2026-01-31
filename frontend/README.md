@@ -16,6 +16,10 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+To run on port 3001: `npm run dev:3001` (then open http://localhost:3001).
+
+**Troubleshooting: 500 errors on dev** — If you see 500 errors for webpack.js, main.js, _app.js, or favicon.ico: (1) Stop the dev server (Ctrl+C). (2) Clear cache: `rm -rf .next`. (3) Restart: `npm run dev` or `npm run dev:3001`. (4) If port is in use: `lsof -ti:3001 | xargs kill -9` (macOS/Linux).
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

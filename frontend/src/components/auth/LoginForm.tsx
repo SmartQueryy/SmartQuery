@@ -52,7 +52,7 @@ export function LoginForm({
                 <Input id="password" type="password" required />
               </div>
               <div className="flex flex-col gap-3">
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700">
                   Login
                 </Button>
                 <GoogleLoginButton 
