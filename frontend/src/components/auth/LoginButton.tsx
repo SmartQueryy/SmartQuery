@@ -172,7 +172,7 @@ export function GoogleLoginButton(props: LoginButtonProps) {
   return (
     <LoginButton
       {...props}
-      className="w-full max-w-sm mx-auto bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-blue-500"
+      className="w-full max-w-sm mx-auto bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-indigo-500 focus:ring-offset-2"
       showIcon={false}
     >
       <div className="flex items-center justify-center space-x-3">

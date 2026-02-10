@@ -12,6 +12,7 @@ from api.chat import router as chat_router
 from api.health import router as health_router
 from api.middleware.cors import setup_cors
 from api.projects import router as projects_router
+from api.stripe_router import router as stripe_router
 from middleware.error_response_middleware import setup_error_handlers
 from middleware.monitoring import PerformanceMonitoringMiddleware
 from middleware.security_middleware import setup_security_middleware
@@ -43,6 +44,7 @@ app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(projects_router)
 app.include_router(chat_router)
+app.include_router(stripe_router)
 
 
 @app.get("/")

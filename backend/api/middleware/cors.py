@@ -21,9 +21,13 @@ def setup_cors(app: FastAPI) -> None:
         allowed_origins.extend(
             [
                 "http://localhost:3000",  # Next.js development server
+                "http://localhost:3001",  # Alternative dev port
                 "http://127.0.0.1:3000",  # Alternative localhost
+                "http://127.0.0.1:3001",  # Alternative localhost + port
                 "https://localhost:3000",  # HTTPS development
+                "https://localhost:3001",
                 "https://127.0.0.1:3000",  # HTTPS alternative localhost
+                "https://127.0.0.1:3001",
             ]
         )
 

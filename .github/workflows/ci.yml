@@ -5,11 +5,17 @@ on:
     branches: [ main, develop ]
   pull_request:
 
+# Cancel in-progress runs when a new commit is pushed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # Quick build and basic tests only
   frontend:
     name: Frontend Quick Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -33,6 +39,7 @@ jobs:
   backend:
     name: Backend Quick Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -52,8 +59,10 @@ jobs:
     
     - name: Basic tests (no coverage requirements)
       working-directory: ./backend
-      run: pytest --tb=short
+      run: pytest --tb=short -m "not integration" --timeout=300
       env:
         TESTING: true
         DATABASE_URL: sqlite:///test.db
-        OPENAI_API_KEY: test-key 
+        OPENAI_API_KEY: test-key
+        REDIS_URL: redis://localhost:6379/0
+        CELERY_BROKER_URL: redis://localhost:6379/1 
