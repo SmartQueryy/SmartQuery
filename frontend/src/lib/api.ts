@@ -181,6 +181,20 @@ export const api = {
       });
     },
   },
+  stripe: {
+    createCheckoutSession: async (params: {
+      annual: boolean;
+      success_url?: string;
+      cancel_url?: string;
+      customer_email?: string;
+    }): Promise<ApiResponse<{ url: string; session_id: string }>> => {
+      return apiClient.request({
+        method: 'POST',
+        url: '/stripe/create-checkout-session',
+        data: params,
+      });
+    },
+  },
   system: {
     healthCheck: async (): Promise<ApiResponse<HealthStatus>> => {
       return apiClient.request({

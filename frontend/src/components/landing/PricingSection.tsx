@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Zap, Sparkles, Building2, ArrowRight } from "lucide-react";
+import { Check, Zap, Sparkles, Building2, ArrowRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 
 const tiers = [
   {
@@ -24,6 +25,7 @@ const tiers = [
     href: "/login",
     variant: "outline" as const,
     popular: false,
+    checkoutTier: false,
   },
   {
     name: "Pro",
@@ -42,6 +44,7 @@ const tiers = [
     href: "/login",
     variant: "default" as const,
     popular: true,
+    checkoutTier: true,
   },
   {
     name: "Enterprise",
@@ -60,6 +63,7 @@ const tiers = [
     href: "/login",
     variant: "outline" as const,
     popular: false,
+    checkoutTier: false,
   },
 ];
 
@@ -71,6 +75,30 @@ export function PricingSection({
   showAnnualToggle?: boolean;
 }) {
   const [annual, setAnnual] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  const handleProCheckout = async () => {
+    setCheckoutError(null);
+    setCheckoutLoading(true);
+    try {
+      const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+      const res = await api.stripe.createCheckoutSession({
+        annual,
+        success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/checkout/cancel`,
+      });
+      if (res.success && res.data?.url) {
+        window.location.href = res.data.url;
+      } else {
+        setCheckoutError(res.error || "Could not start checkout");
+      }
+    } catch {
+      setCheckoutError("Could not connect. Please try again.");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
 
   return (
     <section id="pricing" className={cn("py-20 bg-gray-50 dark:bg-gray-900/50", className)}>
@@ -165,19 +193,53 @@ export function PricingSection({
                     </li>
                   ))}
                 </ul>
-                <Button
-                  variant={tier.variant}
-                  className={cn(
-                    "w-full",
-                    tier.popular && "bg-indigo-600 hover:bg-indigo-700"
-                  )}
-                  asChild
-                >
-                  <Link href={tier.href} className="flex items-center justify-center gap-2">
-                    {tier.cta}
-                    <ArrowRight className="h-4 w-4" aria-hidden />
-                  </Link>
-                </Button>
+                {tier.checkoutTier ? (
+                  <>
+                    <Button
+                      variant={tier.variant}
+                      className={cn(
+                        "w-full min-h-[44px]",
+                        tier.popular && "bg-indigo-600 hover:bg-indigo-700"
+                      )}
+                      onClick={handleProCheckout}
+                      disabled={checkoutLoading}
+                      aria-busy={checkoutLoading}
+                      aria-describedby={checkoutError ? "checkout-error" : undefined}
+                    >
+                      {checkoutLoading ? (
+                        <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                      ) : (
+                        <>
+                          {tier.cta}
+                          <ArrowRight className="h-4 w-4" aria-hidden />
+                        </>
+                      )}
+                    </Button>
+                    {checkoutError && tier.checkoutTier && (
+                      <p
+                        id="checkout-error"
+                        role="alert"
+                        className="mt-2 text-sm text-red-600 dark:text-red-400"
+                      >
+                        {checkoutError}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <Button
+                    variant={tier.variant}
+                    className={cn(
+                      "w-full min-h-[44px]",
+                      tier.popular && "bg-indigo-600 hover:bg-indigo-700"
+                    )}
+                    asChild
+                  >
+                    <Link href={tier.href} className="flex items-center justify-center gap-2">
+                      {tier.cta}
+                      <ArrowRight className="h-4 w-4" aria-hidden />
+                    </Link>
+                  </Button>
+                )}
               </div>
             );
           })}
